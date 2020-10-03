@@ -51,7 +51,7 @@ class GooeyPieEvent:
 class GooeyPieWidget:
     """Base class for other GooeyPie widget classes, mostly for event handling"""
 
-    # Event names in GuiLite matched with their corresponding tk events
+    # Event names in GooeyPie matched with their corresponding tk events
     _tk_event_mappings = {
         'mouse_down': '<Button-1>',
         'mouse_up': '<ButtonRelease-1>',
