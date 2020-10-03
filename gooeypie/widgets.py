@@ -53,15 +53,15 @@ class GooeyPieWidget:
 
     # Event names in GuiLite matched with their corresponding tk events
     _tk_event_mappings = {
-        'mousedown': '<Button-1>',
-        'mouseup': '<ButtonRelease-1>',
-        'doubleclick': '<Double-Button-1>',
-        'tripleclick': '<Triple-Button-1>',
-        'middleclick': '<Button-2>',
-        'rightclick': '<Button-3>',
-        'mouseover': '<Enter>',
-        'mouseout': '<Leave>',
-        'keypress': '<Key>',
+        'mouse_down': '<Button-1>',
+        'mouse_up': '<ButtonRelease-1>',
+        'double_click': '<Double-Button-1>',
+        'triple_click': '<Triple-Button-1>',
+        'middle_click': '<Button-2>',
+        'right_click': '<Button-3>',
+        'mouse_over': '<Enter>',
+        'mouse_out': '<Leave>',
+        'key_press': '<Key>',
         'focus': '<FocusIn>',
         'blur': '<FocusOut>'
     }
