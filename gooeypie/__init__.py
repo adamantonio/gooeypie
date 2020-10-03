@@ -2,6 +2,12 @@ from gooeypie.widgets import *
 from gooeypie.containers import *
 from tkinter import messagebox
 
+
+class GooeyPieError(Exception):
+    """For providing useful and meaningful error messages"""
+    pass
+
+
 class WindowBase(Container):
     """
     Base class for GooeyPieApp and Window classes
