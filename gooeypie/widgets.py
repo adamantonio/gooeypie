@@ -81,7 +81,12 @@ class GooeyPieWidget:
 
     def _slider_change_event(self, event_name, slider_value):
         """In tkinter, slider change events send the new value of the slider, so this is a special callback"""
-        self._event(event_name)
+
+        # The slider's change event will be called whenever a movement is detected on the widget, even if the
+        # movement does not actually change the value. The checks whether or not a change has actually been made.
+        if self._value.get() != self._previous_value:
+            self._previous_value = self._value.get()  # Update the previous value
+            self._event(event_name)
 
     def _text_change_event(self, event_name, a, b, c):
         """To implement the change event for the Input/Textbox widget, a trace must be
@@ -264,6 +269,9 @@ class Slider(ttk.Scale, GooeyPieWidget):
             self._value = tk.DoubleVar()
         else:
             self._value = tk.IntVar()
+
+        # The previous value is stored so that the change event is called only when the actual value changes
+        self._previous_value = self._value.get()
 
         # Swap low and high for vertical orientation to change the weird default behaviour
         if orientation == 'vertical':
