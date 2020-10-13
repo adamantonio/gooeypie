@@ -1,4 +1,5 @@
 from tkinter import ttk
+from gooeypie.error import *
 
 # Set to True to add colours to differentiate the frames and windows etc.
 DEBUG = 0

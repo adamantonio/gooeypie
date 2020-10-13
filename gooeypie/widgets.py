@@ -3,8 +3,8 @@ from tkinter import ttk
 from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
+from gooeypie.error import *
 import platform
-
 
 if platform.system() == 'Windows':
     OS = 'Windows'
@@ -96,6 +96,10 @@ class GooeyPieWidget:
 
     def add_event_listener(self, event_name, callback):
         """Registers callback to respond to certain events"""
+
+        if event_name not in self._events:
+            raise GooeyPieError("I is error?")
+
         try:
             assert callback.__code__.co_argcount == 1    # callback functions must accept a single event argument
             if event_name not in self._events:
@@ -104,6 +108,7 @@ class GooeyPieWidget:
 
             if event_name in self._tk_event_mappings:
                 self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+
             if event_name == 'change':
 
                 if isinstance(self, RadiogroupBase):
@@ -128,7 +133,6 @@ class GooeyPieWidget:
                     # TODO: change event for the textbox is complicated - will need to add a 'sentinel' to the Textbox widget
                     # http://webcache.googleusercontent.com/search?q=cache:KpbCmAzvn_cJ:code.activestate.com/recipes/464635-call-a-callback-when-a-tkintertext-is-modified/+&cd=2&hl=en&ct=clnk&gl=au
                     self.bind('<<Modified>>', partial(self._event, event_name))
-
 
             if event_name == 'press':
                 # press event only on buttons (for now perhaps...)
