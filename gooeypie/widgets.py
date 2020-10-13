@@ -83,7 +83,7 @@ class GooeyPieWidget:
         """In tkinter, slider change events send the new value of the slider, so this is a special callback"""
 
         # The slider's change event will be called whenever a movement is detected on the widget, even if the
-        # movement does not actually change the value. The checks whether or not a change has actually been made.
+        # movement does not actually change the value. This checks whether or not a change has actually been made.
         if self._value.get() != self._previous_value:
             self._previous_value = self._value.get()  # Update the previous value
             self._event(event_name)
