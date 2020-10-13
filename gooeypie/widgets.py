@@ -101,7 +101,11 @@ class GooeyPieWidget:
         if event_name not in self._events:
             raise GooeyPieError(f"The event '{event_name}' is not valid for widget {self}")
 
-        # CHeck that the event function specified accepts a single argument
+        # Check that the callback is a function
+        if not callable(callback):
+            raise GooeyPieError(f'The second argument does not appear to be the name of a function')
+
+        # Check that the event function specified accepts a single argument
         if callback.__code__.co_argcount != 1:
             raise GooeyPieError(f'Your event function {callback.__name__}() must accept a single argument')
 
