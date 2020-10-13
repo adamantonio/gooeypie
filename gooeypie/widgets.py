@@ -97,58 +97,54 @@ class GooeyPieWidget:
     def add_event_listener(self, event_name, callback):
         """Registers callback to respond to certain events"""
 
+        # Check that the event is valid for the given widget
         if event_name not in self._events:
-            raise GooeyPieError("I is error?")
+            raise GooeyPieError(f"The event '{event_name}' is not valid for widget {self}")
 
-        try:
-            assert callback.__code__.co_argcount == 1    # callback functions must accept a single event argument
-            if event_name not in self._events:
-                raise KeyError
-            self._events[event_name] = callback
+        # CHeck that the event function specified accepts a single argument
+        if callback.__code__.co_argcount != 1:
+            raise GooeyPieError(f'Your event function {callback.__name__}() must accept a single argument')
 
-            if event_name in self._tk_event_mappings:
-                self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+        self._events[event_name] = callback
 
-            if event_name == 'change':
+        if event_name in self._tk_event_mappings:
+            self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
-                if isinstance(self, RadiogroupBase):
-                    # Add the event to each radiobutton in the group
-                    for radiobutton in self.winfo_children():
-                        radiobutton.configure(command=partial(self._event, event_name))
+        if event_name == 'change':
+            if isinstance(self, RadiogroupBase):
+                # Add the event to each radiobutton in the group
+                for radiobutton in self.winfo_children():
+                    radiobutton.configure(command=partial(self._event, event_name))
 
-                if isinstance(self, Slider):
-                    # The tk callback for a slider passes an argument that is the value of the slider
-                    self.configure(command=partial(self._slider_change_event, event_name))
+            if isinstance(self, Slider):
+                # The tk callback for a slider passes an argument that is the value of the slider
+                self.configure(command=partial(self._slider_change_event, event_name))
 
-                if isinstance(self, (Checkbox, Spinbox)):
-                    # change method available on Radiobutton and Checkbox objects
-                    self.configure(command=partial(self._event, event_name))
-
-                if isinstance(self, Input):
-                    # Add a trace to the string variable associated with the Input for change
-                    # self._value.trace('w', lambda a, b, c: print('trace works...'))
-                    self._value.trace('w', partial(self._text_change_event, event_name))
-
-                if isinstance(self, Textbox):
-                    # TODO: change event for the textbox is complicated - will need to add a 'sentinel' to the Textbox widget
-                    # http://webcache.googleusercontent.com/search?q=cache:KpbCmAzvn_cJ:code.activestate.com/recipes/464635-call-a-callback-when-a-tkintertext-is-modified/+&cd=2&hl=en&ct=clnk&gl=au
-                    self.bind('<<Modified>>', partial(self._event, event_name))
-
-            if event_name == 'press':
-                # press event only on buttons (for now perhaps...)
+            if isinstance(self, (Checkbox, Spinbox)):
+                # change method available on Radiobutton and Checkbox objects
                 self.configure(command=partial(self._event, event_name))
 
-            if event_name == 'select':
-                # Select event associated at the moment with listboxes and dropdowns
-                if isinstance(self, Listbox):
-                    self.bind('<<ListboxSelect>>', partial(self._event, event_name))
-                elif isinstance(self, Dropdown):
-                    self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
+            if isinstance(self, Input):
+                # Add a trace to the string variable associated with the Input for change
+                # self._value.trace('w', lambda a, b, c: print('trace works...'))
+                self._value.trace('w', partial(self._text_change_event, event_name))
 
-        except AssertionError:
-            raise ValueError(f'{callback.__name__}() must accept a single argument')
-        except KeyError:
-            raise ValueError(f"'{event_name}' is not a valid event for {self}")
+            if isinstance(self, Textbox):
+                # TODO: change event for the textbox is complicated - will need to add a 'sentinel' to the Textbox widget
+                # http://webcache.googleusercontent.com/search?q=cache:KpbCmAzvn_cJ:code.activestate.com/recipes/464635-call-a-callback-when-a-tkintertext-is-modified/+&cd=2&hl=en&ct=clnk&gl=au
+                self.bind('<<Modified>>', partial(self._event, event_name))
+
+        if event_name == 'press':
+            # press event only on buttons (for now perhaps...)
+            self.configure(command=partial(self._event, event_name))
+
+        if event_name == 'select':
+            # Select event associated at the moment with listboxes and dropdowns
+            if isinstance(self, Listbox):
+                self.bind('<<ListboxSelect>>', partial(self._event, event_name))
+            elif isinstance(self, Dropdown):
+                self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
+
 
     def remove_event_listener(self, event_name):
         """
