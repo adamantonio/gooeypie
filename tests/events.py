@@ -5,7 +5,7 @@ import time
 def log_event(event):
     now = time.strftime('%H:%M:%S', time.localtime())
     event_string = f'{now}\t{event.event_name} on {event.widget}'
-    log.text = f'{event_string}\n{log.text}'
+    log.prepend(f'{event_string}\n')
 
 
 def clear_log(event):

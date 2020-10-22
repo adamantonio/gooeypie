@@ -209,6 +209,9 @@ class Label(ttk.Label, GooeyPieWidget):
         GooeyPieWidget.__init__(self)
         ttk.Label.__init__(self, container, text=text)
 
+    def __str__(self):
+        return f"<Label '{self.text}'>"
+
     @property
     def text(self):
         return self.cget('text')
@@ -217,8 +220,7 @@ class Label(ttk.Label, GooeyPieWidget):
     def text(self, content):
         self.configure(text=content)
 
-    def __str__(self):
-        return f"<Label '{self.text}'>"
+
 
     # TODO: add the justify property
     # https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/ttk-Label.html
@@ -236,6 +238,9 @@ class Button(ttk.Button, GooeyPieWidget):
         if callback:
             self.add_event_listener('press', callback)
 
+    def __str__(self):
+        return f"<Button '{self.text}'>"
+
     @property
     def width(self):
         return self.cget('width')
@@ -251,12 +256,6 @@ class Button(ttk.Button, GooeyPieWidget):
     @text.setter
     def text(self, text):
         self.configure(text=text)
-
-    def __str__(self):
-        return f"<Button '{self.text}'>"
-
-    def __repr__(self):
-        return self.__str__()
 
     # TESTING #
     def info(self):
@@ -311,6 +310,9 @@ class StyleLabel(Label):
         self._style = ttk.Style()
         self._style_id = f'{str(id(self))}.TLabel'  # Need a custom id for each instance
         self.configure(style=self._style_id)
+
+    def __str__(self):
+        return f"<StyleLabel '{self.text}'>"
 
     def _get_current_font(self):
         """Returns a dictionary representing the current font"""
@@ -511,6 +513,9 @@ class Hyperlink(StyleLabel, GooeyPieWidget):
         self.bind('<Enter>', lambda e: self.configure(cursor='hand2'))
         self.bind('<Button-1>', self._open_link)
 
+    def __str__(self):
+        return f"<Hyperlink '{self.text}'>"
+
     def _open_link(self, e):
         import webbrowser
         webbrowser.open(self.url)
@@ -521,6 +526,9 @@ class Image(Label, GooeyPieWidget):
         GooeyPieWidget.__init__(self)
         Label.__init__(self, container, None)
         self.image = image
+
+    def __str__(self):
+        return f"""<Image '{self.image}'>"""
 
     @property
     def image(self):
@@ -541,9 +549,6 @@ class Image(Label, GooeyPieWidget):
 
         self.configure(image=self._tk_image)
 
-    def __str__(self):
-        return f"""<Image '{self.image}'>"""
-
     # TODO: Overwrite the text setter to raise an error?
 
 
@@ -555,10 +560,8 @@ class Input(ttk.Entry, GooeyPieWidget):
         self.secret = False
         self._events['change'] = None
 
-    # TODO: width property
-
     def __str__(self):
-        return f"""<Entry object>"""
+        return f"""<Input object>"""
 
     @property
     def width(self):
@@ -603,6 +606,9 @@ class Secret(Input):
         Input.__init__(self, container)
         self.configure(show='●')
 
+    def __str__(self):
+        return f"""<Secret object>"""
+
     def unmask(self):
         self.configure(show='')
 
@@ -635,13 +641,16 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         self.insert('end', *items)
         self._events['select'] = None
 
+    def __str__(self):
+        return f'<Listbox {tuple(self.get(0, "end"))}>'
+
     def add_option(self, item):
         """Adds an item to the end of the listbox"""
         self.insert('end', item)
 
     def remove(self, index):
         """Removes the item at the given index"""
-        # TODO: handle the case where index is None
+        # TODO: handle the case where indexs is None
         # TODO: naming is inconsistent with add_option!
         self.delete(index)
 
@@ -772,7 +781,12 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
         """Clear the contents of the textbox"""
         self.delete('1.0', 'end')
 
+    def prepend(self, text):
+        """Adds the given text to the beginning of the textbox"""
+        self.text = text + self.text
+
     def append(self, text):
+        """Adds the given text to the end of the textbox"""
         self.text += text
 
 
@@ -791,6 +805,9 @@ class ImageButton(Button):
             self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
 
         self.configure(image=self._tk_image, compound='left' if text else 'image')
+
+    def __str__(self):
+        return f"""<ImageButton '{self.image}'>"""
 
     @property
     def image_position(self):
@@ -862,7 +879,7 @@ class Radiogroup(ttk.Frame, RadiogroupBase):
         RadiogroupBase.__init__(self, choices, orient)
 
     def __str__(self):
-        return f'<Radiogroup {tuple(self.choices)}>'
+        return f'<Radiogroup {tuple(self.options)}>'
 
 
 class LabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
