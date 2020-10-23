@@ -109,6 +109,13 @@ class GooeyPieWidget:
         if callback.__code__.co_argcount != 1:
             raise GooeyPieError(f'Your event function {callback.__name__}() must accept a single argument')
 
+        # Hyperlinks have default events for mouse_down (activating the link)
+        # and mouse_over (showing a hand icon)
+        if isinstance(self, Hyperlink):
+            if event_name in ('mouse_down', 'mouse_over'):
+                raise GooeyPieError(f"The {event_name} event cannot be associated with a Hyperlink")
+
+        # Store the callback function in the widgets events dictionary
         self._events[event_name] = callback
 
         if event_name in self._tk_event_mappings:

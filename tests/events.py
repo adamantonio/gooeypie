@@ -43,7 +43,11 @@ app.set_grid(len(widgets), 2)
 for count, w in enumerate(widgets):
     app.add(w, count + 1, 1)
     for e in w._events:
-        w.add_event_listener(e, log_event)
+        try:
+            w.add_event_listener(e, log_event)
+        except gp.GooeyPieError:
+            # Hyperlinks have restricted events
+            pass
 
 # Logging window
 log_area = gp.LabelContainer(app, 'Log')
