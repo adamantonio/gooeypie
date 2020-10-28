@@ -8,6 +8,15 @@ def log_event(event):
     log.prepend(f'{event_string}\n')
 
 
+def remove_listeners(event):
+    for w in widgets:
+        for e in w._events:
+            try:
+                w.remove_event_listener(e)
+            except:
+                print(f'Failed to remove {e} from {w}')
+
+
 def clear_log(event):
     log.text = ''
 
@@ -51,11 +60,18 @@ for count, w in enumerate(widgets):
 
 # Logging window
 log_area = gp.LabelContainer(app, 'Log')
+
+button_area = gp.Container(log_area)
+button_area.set_grid(1, 2)
+clear = gp.Button(button_area, 'Clear', clear_log)
+remove = gp.Button(button_area, 'Remove all listeners', remove_listeners)
+button_area.add(clear, 1, 1)
+button_area.add(remove, 1, 2)
+
 log = gp.Textbox(log_area, 80)
-clear = gp.Button(log_area, 'Clear', clear_log)
 log_area.set_grid(2, 1)
 log_area.add(log, 1, 1, stretch=True)
-log_area.add(clear, 2, 1)
+log_area.add(button_area, 2, 1)
 log_area.set_row_weights(1, 0)
 app.add(log_area, 1, 2, row_span=len(widgets), stretch=True)
 

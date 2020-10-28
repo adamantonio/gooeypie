@@ -103,17 +103,18 @@ class GooeyPieWidget:
 
         # Check that the callback is a function
         if not callable(callback):
-            raise GooeyPieError(f'The second argument does not appear to be the name of a function')
+            raise GooeyPieError(f"The second argument does not appear to be the name of a function. "
+                                f"Remember, no brackets - you don't want to *call* the function")
 
         # Check that the event function specified accepts a single argument
         if callback.__code__.co_argcount != 1:
-            raise GooeyPieError(f'Your event function {callback.__name__}() must accept a single argument')
+            raise GooeyPieError(f"Your event function '{callback.__name__}' must accept a single argument")
 
         # Hyperlinks have default events for mouse_down (activating the link)
         # and mouse_over (showing a hand icon)
         if isinstance(self, Hyperlink):
             if event_name in ('mouse_down', 'mouse_over'):
-                raise GooeyPieError(f"The {event_name} event cannot be associated with a Hyperlink")
+                raise GooeyPieError(f"The '{event_name}' event cannot be associated with a Hyperlink")
 
         # Store the callback function in the widgets events dictionary
         self._events[event_name] = callback
@@ -136,9 +137,9 @@ class GooeyPieWidget:
                 self.configure(command=partial(self._event, event_name))
 
             if isinstance(self, Input):
-                # Add a trace to the string variable associated with the Input for change
-                # self._value.trace('w', lambda a, b, c: print('trace works...'))
-                self._value.trace('w', partial(self._text_change_event, event_name))
+                # Add a trace to the string variable associated with the Input for listening for the 'change' event
+                # Returns an internal string required to remove the listener
+                self._observer = self._value.trace('w', partial(self._text_change_event, event_name))
 
             if isinstance(self, Textbox):
                 # TODO: change event for the textbox is complicated - will need to add a 'sentinel' to the Textbox widget
@@ -156,20 +157,49 @@ class GooeyPieWidget:
             elif isinstance(self, Dropdown):
                 self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
 
-
     def remove_event_listener(self, event_name):
         """
-        Removes an event listener from a widget
-        No exceptions are raised if the event is not currently registered
+        Removes an event listener from a widget. Raises a GooeyPieError if the event is no associated with that widget,
+        but does not raise an error if there is no event to remove.
         """
-        try:
-            self._events[event_name] = None
-            if event_name in ('change', 'press'):
-                self.configure(command='')
-            else:
+        if event_name not in self._events:
+            raise GooeyPieError(f"Event '{event_name}' is not valid for {self}")
+
+        if event_name in self._tk_event_mappings:
+            # Unbind standard events like mouse_down, right_click etc
+            if not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
+                # Go ahead and unbind unless they we're trying to break the hyperlink
                 self.unbind(self._tk_event_mappings[event_name])
-        except KeyError:
-            raise ValueError(f"Cannot remove event. '{event_name}' is not a valid event for {self}")
+
+        if event_name == 'change':
+            if isinstance(self, RadiogroupBase):
+                # Unbind the event function from each radiobutton in the group
+                for radiobutton in self.winfo_children():
+                    radiobutton.configure(command='')
+
+            if isinstance(self, (Slider, Checkbox, Spinbox)):
+                self.configure(command='')
+
+            if isinstance(self, Input):
+                # If there is a change event, then
+                if self._observer:
+                    self._value.trace_vdelete('w', self._observer)
+                    self._observer = None
+
+            if isinstance(self, Textbox):
+                # TODO: add_event_listener not implemented
+                self.unbind('<<Modified>>')
+
+        if event_name == 'press':
+            # press event on buttons
+            self.configure(command='')
+
+        if event_name == 'select':
+            # Select event associated at the moment with listboxes and dropdowns
+            if isinstance(self, Listbox):
+                self.unbind('<<ListboxSelect>>')
+            elif isinstance(self, Dropdown):
+                self.unbind('<<ComboboxSelected>>')
 
     # All widgets can be enabled and disabled
     @property
@@ -566,6 +596,7 @@ class Input(ttk.Entry, GooeyPieWidget):
         ttk.Entry.__init__(self, container, textvariable=self._value)
         self.secret = False
         self._events['change'] = None
+        self._observer = None  # Used in tkinter's trace method, for the 'change' event
 
     def __str__(self):
         return f"""<Input object>"""
