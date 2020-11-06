@@ -3,7 +3,7 @@ from tkinter import ttk
 from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
-from gooeypie.error import *
+from gooeypie.error import GooeyPieError
 import platform
 
 if platform.system() == 'Windows':
@@ -257,12 +257,15 @@ class Label(ttk.Label, GooeyPieWidget):
     def text(self, content):
         self.configure(text=content)
 
+    @property
+    def justify(self):
+        return self.cget('justify')
 
-
-    # TODO: add the justify property
-    # https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/ttk-Label.html
-    # Label.configure(justify='center|left|right')
-    # Already did this for Input - copy across?
+    @justify.setter
+    def justify(self, value):
+        """If the label contains newline characters, set to 'left', 'center' or 'right to justify the text.
+        """
+        self.configure(justify=value)
 
 
 class Button(ttk.Button, GooeyPieWidget):
