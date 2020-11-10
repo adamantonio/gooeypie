@@ -4,6 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
+
 import platform
 
 if platform.system() == 'Windows':
@@ -66,7 +67,12 @@ class GooeyPieWidget:
         'blur': '<FocusOut>'
     }
 
-    def __init__(self):
+    def __init__(self, container=None):
+        # Check that the container is valid
+        # if not isinstance(container, ContainerBase)
+        if not isinstance(container, (ttk.Frame, ttk.LabelFrame)):
+            raise GooeyPieError(f'A widget can only be added to a GooeyPieApp, Window or container')
+
         # All events initially set to None
         self._events = {event_name: None for event_name in self._tk_event_mappings.keys()}
         self._disabled = False
@@ -243,7 +249,7 @@ class GooeyPieWidget:
 
 class Label(ttk.Label, GooeyPieWidget):
     def __init__(self, container, text):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         ttk.Label.__init__(self, container, text=text)
 
     def __str__(self):
@@ -263,14 +269,13 @@ class Label(ttk.Label, GooeyPieWidget):
 
     @justify.setter
     def justify(self, value):
-        """If the label contains newline characters, set to 'left', 'center' or 'right to justify the text.
-        """
+        """If the label contains newline characters, set to 'left', 'center' or 'right to justify the text."""
         self.configure(justify=value)
 
 
 class Button(ttk.Button, GooeyPieWidget):
     def __init__(self, container, text, callback, min_size=10):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         ttk.Button.__init__(self, container, text=text)
         size = max(min_size, len(text) + 2)
         self.configure(width=size)
@@ -304,7 +309,7 @@ class Button(ttk.Button, GooeyPieWidget):
 
 class Slider(ttk.Scale, GooeyPieWidget):
     def __init__(self, container, low, high, orientation='horizontal'):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         self._events['change'] = None
 
         # The slider's value will be a float or int depending on the low/high parameter data type
@@ -545,7 +550,7 @@ class StyleLabel(Label):
 
 class Hyperlink(StyleLabel, GooeyPieWidget):
     def __init__(self, container, text, url):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         StyleLabel.__init__(self, container, text)
         self.url = url
         self.colour = 'blue'
@@ -563,7 +568,7 @@ class Hyperlink(StyleLabel, GooeyPieWidget):
 
 class Image(Label, GooeyPieWidget):
     def __init__(self, container, image):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         Label.__init__(self, container, None)
         self.image = image
 
@@ -594,7 +599,7 @@ class Image(Label, GooeyPieWidget):
 
 class Input(ttk.Entry, GooeyPieWidget):
     def __init__(self, container):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         self._value = tk.StringVar()
         ttk.Entry.__init__(self, container, textvariable=self._value)
         self.secret = False
@@ -665,7 +670,7 @@ class Secret(Input):
 
 class Listbox(tk.Listbox, GooeyPieWidget):
     def __init__(self, container, items):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         tk.Listbox.__init__(self, container)
 
         # Configuration options to make the listbox look more like a ttk widget
@@ -745,7 +750,7 @@ class Listbox(tk.Listbox, GooeyPieWidget):
 
 class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
     def __init__(self, container, width=20, height=5):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         scrolledtext.ScrolledText.__init__(self, container, width=width, height=height)
 
         self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'),
@@ -862,7 +867,7 @@ class ImageButton(Button):
 
 class Checkbox(ttk.Checkbutton, GooeyPieWidget):
     def __init__(self, container, text):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         self._checked = tk.BooleanVar(value=False)
         ttk.Checkbutton.__init__(self, container, text=text, variable=self._checked)
         self.state(['!alternate'])
@@ -882,8 +887,8 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 
 class RadiogroupBase(GooeyPieWidget):
     """Base class used by Radiogroup and LabelledRadiogroup"""
-    def __init__(self, choices, orient):
-        GooeyPieWidget.__init__(self)
+    def __init__(self, container, choices, orient):
+        GooeyPieWidget.__init__(self, container)
         self._events['change'] = None   # Radiobuttons support the 'change' event
         self._selected = tk.StringVar()
 
@@ -917,7 +922,7 @@ class Radiogroup(ttk.Frame, RadiogroupBase):
     """A set of radio buttons"""
     def __init__(self, container, choices, orient='vertical'):
         ttk.Frame.__init__(self, container)
-        RadiogroupBase.__init__(self, choices, orient)
+        RadiogroupBase.__init__(self, container, choices, orient)
 
     def __str__(self):
         return f'<Radiogroup {tuple(self.options)}>'
@@ -927,7 +932,7 @@ class LabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
     """A set of radio buttons in a label frame"""
     def __init__(self, container, title, choices, orient='vertical'):
         ttk.LabelFrame.__init__(self, container, text=title)
-        RadiogroupBase.__init__(self, choices, orient)
+        RadiogroupBase.__init__(self, container, choices, orient)
 
     def __str__(self):
         return f'<LabelRadiogroup {tuple(self.options)}>'
@@ -935,7 +940,7 @@ class LabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
 
 class Dropdown(ttk.Combobox, GooeyPieWidget):
     def __init__(self, container, choices):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         ttk.Combobox.__init__(self, container, values=choices, exportselection=0)
         self.state(['readonly'])
         self._events['select'] = None
@@ -979,7 +984,7 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
 class Spinbox(ttk.Spinbox, GooeyPieWidget):
     def __init__(self, container, low, high, increment=1):
-        GooeyPieWidget.__init__(self)
+        GooeyPieWidget.__init__(self, container)
         ttk.Spinbox.__init__(self, container, from_=low, to=high, increment=increment, wrap=True)
         self.set(low)
         self.width = len(str(high)) + 4
