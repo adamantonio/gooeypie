@@ -548,9 +548,8 @@ class StyleLabel(Label):
                 element, style.element_options(element)))
 
 
-class Hyperlink(StyleLabel, GooeyPieWidget):
+class Hyperlink(StyleLabel):
     def __init__(self, container, text, url):
-        GooeyPieWidget.__init__(self, container)
         StyleLabel.__init__(self, container, text)
         self.url = url
         self.colour = 'blue'
@@ -566,9 +565,8 @@ class Hyperlink(StyleLabel, GooeyPieWidget):
         webbrowser.open(self.url)
 
 
-class Image(Label, GooeyPieWidget):
+class Image(Label):
     def __init__(self, container, image):
-        GooeyPieWidget.__init__(self, container)
         Label.__init__(self, container, None)
         self.image = image
 
