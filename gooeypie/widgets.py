@@ -4,6 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
+from gooeypie.containers import Container   # Used for the ScrolledListbox widget
 
 import platform
 
@@ -744,6 +745,48 @@ class Listbox(tk.Listbox, GooeyPieWidget):
             return self.get(0, 'end')[select[0]]
         else:
             return [self.get(0, 'end')[index] for index in select]
+
+
+class ScrolledListbox(Container):
+    def __init__(self, container, items):
+        Container.__init__(self, container)
+
+        # Set container to fill cell
+        self.columnconfigure(0, weight=1)
+
+        # Create listbox and scrollbar
+        self._listbox = Listbox(self, items)
+        self._scrollbar = tk.Scrollbar(self, orient='vertical')
+
+        # Configure behaviour of scrollbar
+        self._scrollbar.config(command=self._listbox.yview)
+        self._listbox.config(yscrollcommand=self._scrollbar.set)
+
+        # Add to parent Container
+        self._listbox.grid(row=0, column=0, sticky='nsew')
+        self._scrollbar.grid(row=0, column=1, sticky='nsew')
+
+    @property
+    def height(self):
+        return self._listbox.cget('height')
+
+    @height.setter
+    def height(self, lines):
+        self._listbox.configure(height=lines)
+
+    def hide_scrollbar(self):
+        """Hides the scrollbar from the listbox"""
+        self._listbox.grid_remove()
+        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=2)
+        self._scrollbar.grid_remove()
+
+    def show_scrollbar(self):
+        """Shows the scrollbar from the listbox"""
+        self._listbox.grid_remove()
+        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=1)
+        self._scrollbar.grid()
+
+    # TODO provide methods for Listbox operations or decide whether or not to make this the Listbox widget
 
 
 class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
