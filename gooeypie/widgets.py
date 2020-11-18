@@ -668,7 +668,7 @@ class Secret(Input):
 
 
 class Listbox(tk.Listbox, GooeyPieWidget):
-    def __init__(self, container, items):
+    def __init__(self, container, items=()):
         GooeyPieWidget.__init__(self, container)
         tk.Listbox.__init__(self, container)
 
@@ -689,16 +689,6 @@ class Listbox(tk.Listbox, GooeyPieWidget):
     def __str__(self):
         return f'<Listbox {tuple(self.get(0, "end"))}>'
 
-    def add_option(self, item):
-        """Adds an item to the end of the listbox"""
-        self.insert('end', item)
-
-    def remove(self, index):
-        """Removes the item at the given index"""
-        # TODO: handle the case where indexs is None
-        # TODO: naming is inconsistent with add_option!
-        self.delete(index)
-
     @property
     def height(self):
         return self.cget('height')
@@ -708,43 +698,93 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         self.configure(height=lines)
 
     @property
+    def items(self):
+        """Returns a list of all items in the listbox"""
+        return list(self.get(0, 'end'))
+
+    @items.setter
+    def items(self, items_):
+        self.delete(0, 'end')
+        self.insert(0, *items_)
+
+    @property
     def multiple_selection(self):
+        """Returns a Boolean indicating whether the listbox allows multiple items to be selected or not"""
         return self.cget('selectmode') == 'extended'
 
     @multiple_selection.setter
     def multiple_selection(self, multiple):
+        """Sets if the listbox allows multiple items to be selected or not"""
         mode = 'extended' if multiple else 'browse'
         self.configure(selectmode=mode)
 
     @property
     def selected_index(self):
-        """Returns the index, starting from 0, of the selected line. Returns None if nothing is selected and
-        a list if multiple items are selected
+        """Returns the index(es), starting from 0, of the selected line.
+        Returns None if nothing is selected.
+        Returns a list of indexes if multiple selections are enabled.
         """
         select = self.curselection()
         if len(select) == 0:
             return None
-        elif len(select) == 1:
-            return select[0]
+        if self.multiple_selection:
+            return list(select)
         else:
-            return select
+            return select[0]
 
     @selected_index.setter
     def selected_index(self, index):
-        """Selects the line at position 'index', counting from 0"""
+        """Selects the line at the given index, counting from 0
+        This will add to the current selection if multiple selection is set
+        """
+        # Clear the current selection if single selection only
+        if not self.multiple_selection:
+            self.select_none()
+
         self.activate(index)
         self.selection_set(index)
 
     @property
     def selected(self):
-        """Returns the item, items as a tuple, or None, selected in the listbox"""
+        """Returns the item(s), starting from 0, of the selected line.
+        Returns None if nothing is selected.
+        Returns a list of items if multiple selections are enabled.
+        """
         select = self.curselection()
         if len(select) == 0:
             return None
-        elif len(select) == 1:
-            return self.get(0, 'end')[select[0]]
-        else:
+        if self.multiple_selection:
             return [self.get(0, 'end')[index] for index in select]
+        else:
+            return self.get(0, 'end')[select[0]]
+
+    def select_none(self):
+        self.selection_clear(0, 'end')
+
+    def select_all(self):
+        self.selection_set(0, 'end')
+
+    def add_item(self, item):
+        """Adds an item to the end of the listbox"""
+        self.insert('end', item)
+
+    def add_item_to_start(self, item):
+        """Adds an item to the top of the listbox"""
+        self.insert(0, item)
+
+    def remove_item(self, index):
+        """Removes and returns the item at the given index"""
+        if type(index) != int:
+            raise ValueError('Cannot remove item from listbox - the index must be an integer')
+        if index < 0:
+            raise ValueError('Cannot remove item from listbox - the index cannot be negative')
+        if index >= len(self.items):
+            raise ValueError('Cannot remove item from listbox - index too large')
+
+        # Get item, remove and return
+        item = self.items[index]
+        self.delete(index)
+        return item
 
 
 class ScrolledListbox(Container):
@@ -870,11 +910,11 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
 
     def prepend(self, text):
         """Adds the given text to the beginning of the textbox"""
-        self.text = text + self.text
+        self.text = f'{text}{self.text}'
 
     def append(self, text):
         """Adds the given text to the end of the textbox"""
-        self.text += text
+        self.text = f'{self.text}{text}'
 
 
 class ImageButton(Button):
