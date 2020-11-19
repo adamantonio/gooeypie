@@ -676,8 +676,7 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'), activestyle='none',
                        highlightcolor='systemHighlight', highlightthickness=1, exportselection=0)
 
-        # Different border colour names for Windows and Mac
-        # https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
+        # Different border colour names for Windows and Mac https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
         if OS == 'Windows':
             self.configure(highlightbackground='systemGrayText')
         if OS == "Mac":
@@ -699,11 +698,12 @@ class Listbox(tk.Listbox, GooeyPieWidget):
 
     @property
     def items(self):
-        """Returns a list of all items in the listbox"""
+        """Returns a COPY of the items in the listbox"""
         return list(self.get(0, 'end'))
 
     @items.setter
     def items(self, items_):
+        """Sets the contents of the listbox"""
         self.delete(0, 'end')
         self.insert(0, *items_)
 
@@ -715,6 +715,7 @@ class Listbox(tk.Listbox, GooeyPieWidget):
     @multiple_selection.setter
     def multiple_selection(self, multiple):
         """Sets if the listbox allows multiple items to be selected or not"""
+        self.select_none()
         mode = 'extended' if multiple else 'browse'
         self.configure(selectmode=mode)
 
@@ -741,12 +742,12 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         if not self.multiple_selection:
             self.select_none()
 
-        self.activate(index)
         self.selection_set(index)
+        self.see(index)  # Show the selected line (it may not be in view)
 
     @property
     def selected(self):
-        """Returns the item(s), starting from 0, of the selected line.
+        """Returns the item(s), starting from 0, of the currently selected line.
         Returns None if nothing is selected.
         Returns a list of items if multiple selections are enabled.
         """
@@ -759,10 +760,13 @@ class Listbox(tk.Listbox, GooeyPieWidget):
             return self.get(0, 'end')[select[0]]
 
     def select_none(self):
+        """Deselects any items that may be selected in the listbox"""
         self.selection_clear(0, 'end')
 
     def select_all(self):
-        self.selection_set(0, 'end')
+        """Selects (highlights) all items in the listbox. Multiple selection must be enabled"""
+        if self.multiple_selection:
+            self.selection_set(0, 'end')
 
     def add_item(self, item):
         """Adds an item to the end of the listbox"""
@@ -785,6 +789,17 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         item = self.items[index]
         self.delete(index)
         return item
+
+    def remove_selected(self):
+        """Removes all items from the selected index(es)"""
+        if self.selected_index is not None:
+            if self.multiple_selection:
+                for index in reversed(self.selected_index):
+                    self.remove_item(index)
+            else:
+                index = self.selected_index
+                self.remove_item(index)
+                self.selected_index = index
 
 
 class ScrolledListbox(Container):
