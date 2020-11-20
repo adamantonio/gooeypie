@@ -53,16 +53,17 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
 
     def add(self, widget, row, column, **kwargs):
         """Add the given widget to the grid with arguments"""
-        if kwargs.get('fill') or kwargs.get('stretch'):
-            sticky = ''
-            if kwargs.get('fill'):
-                sticky += 'ew'
-            if kwargs.get('stretch'):
-                sticky += 'ns'
-        else:
-            sticky = self.tk_align_mappings[kwargs.get('align', 'left')]
-            sticky += self.tk_valign_mappings[kwargs.get('valign', 'top')]
 
+        # Determine the tkinter sticky property
+        sticky = ''
+        if kwargs.get('fill'):
+            sticky += 'ew'
+        if kwargs.get('stretch'):
+            sticky += 'ns'
+        sticky += self.tk_align_mappings[kwargs.get('align', 'left')]
+        sticky += self.tk_valign_mappings[kwargs.get('valign', 'top')]
+
+        # Column span and row span
         column_span = kwargs.get('column_span', 1)
         row_span = kwargs.get('row_span', 1)
 
