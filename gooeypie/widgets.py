@@ -686,14 +686,17 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         self._events['select'] = None
 
     def __str__(self):
-        return f'<Listbox {tuple(self.get(0, "end"))}>'
+        return f'<Listbox {tuple(self.items)}>'
 
     @property
     def height(self):
+        """Returns the number of lines in the listbox"""
         return self.cget('height')
 
     @height.setter
     def height(self, lines):
+        """Sets the *minimum* number of lines in the listbox. The number of visible lines may be different
+        """
         self.configure(height=lines)
 
     @property
@@ -791,23 +794,34 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         return item
 
     def remove_selected(self):
-        """Removes all items from the selected index(es)"""
+        """Removes all items from the selected index(es) and returns"""
         if self.selected_index is not None:
             if self.multiple_selection:
+                # Return a list of items if multiple selection enabled
+                removed_items = []
+                # traverse the selected indexes in reverse order to avoid
+                # index repetition issues
                 for index in reversed(self.selected_index):
-                    self.remove_item(index)
+                    # self.remove_item returns each removed item, append it to a list
+                    removed_items.append(self.remove_item(index))
+                # items were added to removed_items in reversed order, so return the reverse
+                # to get the correct order back
+                return list(reversed(removed_items))
             else:
+                # Return single value
                 index = self.selected_index
-                self.remove_item(index)
-                self.selected_index = index
+                removed_item = self.remove_item(index)
+                self.selected_index = index   # Keep the existing selection
+                return removed_item
 
 
 class ScrolledListbox(Container):
-    def __init__(self, container, items):
+    def __init__(self, container, items=()):
         Container.__init__(self, container)
 
         # Set container to fill cell
         self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
 
         # Create listbox and scrollbar
         self._listbox = Listbox(self, items)
@@ -821,6 +835,56 @@ class ScrolledListbox(Container):
         self._listbox.grid(row=0, column=0, sticky='nsew')
         self._scrollbar.grid(row=0, column=1, sticky='nsew')
 
+        # Default scrollbar settings
+        self._scrollbar_visible = 'auto'
+        self.bind('<Configure>', self._update_scrollbar)  # Update scrollbar visibility when listbox changes size
+
+        # Alias Listbox methods for this class that don't affect its contents
+        # (methods that affect the contents need to take the additional step of checking
+        # for the scrollbar visibility if scrollbar visibility is set to 'auto')
+        self.select_all = self._listbox.select_all
+        self.select_none = self._listbox.select_none
+
+    def _visible_lines(self):
+        """Returns the number of lines that the listbox can currently display by dividing the height of the listbox
+        by the height of the font (in pixels). This may be different to the height property set on the listbox if
+        it has been stretched to fill in the vertical direction.
+        Used to determine whether or not to show the scrollbar when set it is set to 'auto'
+        """
+        self._listbox.update()
+        font_height = font.Font(font='TkDefaultFont').metrics('linespace')
+        font_height *= 1.05  # fudge to account for line spacing, presumably
+        listbox_height = self._listbox.winfo_height()
+        return int(listbox_height / font_height)
+
+    def _update_scrollbar(self, _event=None):
+        """Updates the visibility of the scrollbar in response to resize events, changes to the contents
+        of the listbox and changes to the scrollbar setting using the scrollbar property.
+        The _event parameter is needed so it can be used as the 'Configure' callback, which is triggered when the
+        listbox changes size in response to a window resize event.
+        """
+        if self._scrollbar_visible == 'visible':
+            self._show_scrollbar()
+        elif self._scrollbar_visible == 'hidden':
+            self._hide_scrollbar()
+        else:
+            if len(self._listbox.items) > self._visible_lines():
+                self._show_scrollbar()
+            else:
+                self._hide_scrollbar()
+
+    def _hide_scrollbar(self):
+        """Hides the scrollbar from the listbox"""
+        self._listbox.grid_remove()
+        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=2)
+        self._scrollbar.grid_remove()
+
+    def _show_scrollbar(self):
+        """Shows the scrollbar on the side of the listbox"""
+        self._listbox.grid_remove()
+        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=1)
+        self._scrollbar.grid()
+
     @property
     def height(self):
         return self._listbox.cget('height')
@@ -829,19 +893,82 @@ class ScrolledListbox(Container):
     def height(self, lines):
         self._listbox.configure(height=lines)
 
-    def hide_scrollbar(self):
-        """Hides the scrollbar from the listbox"""
-        self._listbox.grid_remove()
-        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=2)
-        self._scrollbar.grid_remove()
+    @property
+    def scrollbar(self):
+        return self._scrollbar_visible
 
-    def show_scrollbar(self):
-        """Shows the scrollbar from the listbox"""
-        self._listbox.grid_remove()
-        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=1)
-        self._scrollbar.grid()
+    @scrollbar.setter
+    def scrollbar(self, setting):
+        if setting not in ('auto', 'visible', 'hidden'):
+            raise GooeyPieError("Invalid scrollbar option - must be set to 'auto', 'hidden' or 'visible'")
+        self._scrollbar_visible = setting
+        self._update_scrollbar()
 
-    # TODO provide methods for Listbox operations or decide whether or not to make this the Listbox widget
+    @property
+    def items(self):
+        """Returns a COPY of the items in the listbox"""
+        return self._listbox.items
+
+    @items.setter
+    def items(self, items_):
+        """Sets the contents of the listbox"""
+        self._listbox.items = items_
+        self._update_scrollbar()
+
+    @property
+    def multiple_selection(self):
+        """Returns a Boolean indicating whether the listbox allows multiple items to be selected or not"""
+        return self._listbox.multiple_selection
+
+    @multiple_selection.setter
+    def multiple_selection(self, multiple):
+        """Sets if the listbox allows multiple items to be selected or not"""
+        self._listbox.multiple_selection = multiple
+
+    @property
+    def selected(self):
+        """Returns the item(s), starting from 0, of the currently selected line.
+        Returns None if nothing is selected.
+        Returns a list of items if multiple selections are enabled.
+        """
+        return self._listbox.selected
+
+    @property
+    def selected_index(self):
+        """Returns the index(es), starting from 0, of the selected line.
+        Returns None if nothing is selected.
+        Returns a list of indexes if multiple selections are enabled.
+        """
+        return self._listbox.selected_index
+
+    @selected_index.setter
+    def selected_index(self, index):
+        """Selects the line at the given index, counting from 0
+        This will add to the current selection if multiple selection is set
+        """
+        self._listbox.selected_index = index
+
+    def add_item(self, item):
+        """Adds an item to the end of the listbox"""
+        self._listbox.add_item(item)
+        self._update_scrollbar()
+
+    def add_item_to_start(self, item):
+        """Adds an item to the top of the listbox"""
+        self._listbox.add_item_to_start(item)
+        self._update_scrollbar()
+
+    def remove_item(self, index):
+        """Removes and returns the item at the given index"""
+        removed = self._listbox.remove_item(index)
+        self._update_scrollbar()
+        return removed
+
+    def remove_selected(self):
+        """Removes all items from the selected index(es) and returns"""
+        removed = self._listbox.remove_selected()
+        self._update_scrollbar()
+        return removed
 
 
 class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):

@@ -1,63 +1,85 @@
 import gooeypie as gp
 from random import randint
 
+NUM_RANDOM_ITEMS = 15
+
 app = gp.GooeyPieApp('Listbox Tests')
 
 
 def display_items(event):
     """Test for items getter"""
     items = listbox.items
-    print(items)
-    print(len(items))
-    output.prepend(f'{items}\n')
+    output.prepend(f'Regular: {len(items)} items: {items}\n')
+    items = scroll_listbox.items
+    output.prepend(f'Scrolled: {len(items)} items: {items}\n')
 
 
 def add_items(event):
     """Testing for items setter"""
-    random_numbers = [randint(1, 100) for _ in range(100)]
+    random_numbers = [randint(1, 100) for _ in range(NUM_RANDOM_ITEMS)]
+    random_numbers = [n + 1 for n in range(NUM_RANDOM_ITEMS)]
     listbox.items = random_numbers
+    scroll_listbox.items = random_numbers
+    output.prepend(f'Set listbox to {NUM_RANDOM_ITEMS} random numbers\n')
 
 
 def add_item(event):
     """Testing for add_item """
     listbox.add_item(add_what.text)
+    scroll_listbox.add_item(add_what.text)
+    output.prepend(f'Added {add_what.text} to end\n')
 
 
 def add_item_to_start(event):
     """Testing for add_item """
     listbox.add_item_to_start(add_start_what.text)
+    scroll_listbox.add_item_to_start(add_start_what.text)
+    output.prepend(f'Added {add_start_what.text} to start\n')
 
 
 def remove_item(event):
-    """Testing for add_item """
-    output.prepend(f'Deleted {listbox.remove_item(int(remove_where.text))}')
+    """Testing for remove_item"""
+    output.prepend(f'Removed {scroll_listbox.remove_item(int(remove_where.text))} and {listbox.remove_item(int(remove_where.text))}\n')
 
 
 def set_multiple(event):
+    """Change the listbox to allow multiple selection"""
     listbox.multiple_selection = multiple.checked
+    scroll_listbox.multiple_selection = multiple.checked
+    output.prepend(f'Set multiple selection to {multiple.checked}\n')
 
 
 def get_selected(event):
-    output.prepend(f'Selected item: {listbox.selected}\n')
+    output.prepend(f'Selected item(s): {scroll_listbox.selected} and {listbox.selected}\n')
 
 
 def get_selected_index(event):
-    output.prepend(f'Selected index: {listbox.selected_index}\n')
+    output.prepend(f'Selected index: {scroll_listbox.selected_index} and {listbox.selected_index}\n')
+
+
+def remove_selected(event):
+    output.prepend(f'Removed item(s): {scroll_listbox.remove_selected()} and {listbox.remove_selected()}\n')
 
 
 def select_at(event):
     listbox.selected_index = int(select_where.text)
+    scroll_listbox.selected_index = int(select_where.text)
+    output.prepend(f'Selected item at {select_where.text}\n')
 
 
 def select(event):
     if event.widget == select_all:
         listbox.select_all()
+        scroll_listbox.select_all()
     if event.widget == select_none:
         listbox.select_none()
+        scroll_listbox.select_none()
 
 
-def remove_selected(event):
-    listbox.remove_selected()
+def set_scrollbar(event):
+    """Changes the visibility setting of the scrollbar"""
+    scroll_listbox.scrollbar = scrollbar_option.selected
+    output.prepend(f'Changed scrollbar to {scrollbar_option.selected}\n')
 
 
 # Listbox Container
@@ -65,11 +87,22 @@ listbox_container = gp.LabelContainer(app, 'Listbox')
 listbox = gp.Listbox(listbox_container)
 multiple = gp.Checkbox(listbox_container, 'Allow multiple selection')
 multiple.add_event_listener('change', set_multiple)
-listbox.height = 10
 listbox_container.set_grid(2, 1)
 listbox_container.set_row_weights(1, 0)
 listbox_container.add(listbox, 1, 1, fill=True, stretch=True)
 listbox_container.add(multiple, 2, 1)
+
+# Scrolled listbox container
+scrolled_listbox_container = gp.LabelContainer(app, 'Scrolling')
+scroll_listbox = gp.ScrolledListbox(scrolled_listbox_container)
+scroll_listbox.items = [n*10 for n in range(1,100)]
+scrollbar_option = gp.Dropdown(scrolled_listbox_container, ['auto', 'visible', 'hidden'])
+scrollbar_option.selected_index = 0
+scrollbar_option.add_event_listener('select', set_scrollbar)
+scrolled_listbox_container.set_grid(2, 1)
+scrolled_listbox_container.set_row_weights(1, 0)
+scrolled_listbox_container.add(scroll_listbox, 1, 1, fill=True, stretch=True)
+scrolled_listbox_container.add(scrollbar_option, 2, 1)
 
 # Testing operations Container
 test_container = gp.LabelContainer(app, 'Tests')
@@ -116,10 +149,11 @@ output_container.add(output, 1, 1, fill=True, stretch=True)
 
 
 # Add containers to main window and run
-app.set_grid(2, 2)
-app.set_column_weights(0, 1)
-app.set_row_weights(1, 1)
-app.add(listbox_container, 1, 1, stretch=True)
-app.add(test_container, 1, 2, fill=True, stretch=True)
-app.add(output_container, 2, 1, column_span=2, fill=True, stretch=True)
+app.set_grid(2, 3)
+app.set_column_weights(1, 1, 1)
+app.set_row_weights(1, 0)
+app.add(scrolled_listbox_container, 1, 1, stretch=True, fill=True)
+app.add(listbox_container, 1, 2, stretch=True, fill=True)
+app.add(test_container, 1, 3, fill=True)
+app.add(output_container, 2, 1, column_span=3, fill=True, stretch=True)
 app.run()
