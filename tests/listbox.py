@@ -82,6 +82,16 @@ def set_scrollbar(event):
     output.prepend(f'Changed scrollbar to {scrollbar_option.selected}\n')
 
 
+def select_event(event):
+    output.prepend(f'{scroll_listbox.selected} selected on scroll listbox, {listbox.selected} selected on listbox\n')
+
+
+def enable_disable_listboxes(event):
+    listbox.disabled = not listbox.disabled
+    scroll_listbox.disabled = not scroll_listbox.disabled
+    output.prepend('Disabling listboxes\n')
+
+
 # Listbox Container
 listbox_container = gp.LabelContainer(app, 'Listbox')
 listbox = gp.Listbox(listbox_container)
@@ -96,6 +106,7 @@ listbox_container.add(multiple, 2, 1)
 scrolled_listbox_container = gp.LabelContainer(app, 'Scrolling')
 scroll_listbox = gp.ScrolledListbox(scrolled_listbox_container)
 scroll_listbox.items = [n*10 for n in range(1,100)]
+scroll_listbox.add_event_listener('select', select_event)
 scrollbar_option = gp.Dropdown(scrolled_listbox_container, ['auto', 'visible', 'hidden'])
 scrollbar_option.selected_index = 0
 scrollbar_option.add_event_listener('select', set_scrollbar)
@@ -121,6 +132,7 @@ select_where = gp.Input(test_container)
 select_all = gp.Button(test_container, 'Select all', select)
 select_none = gp.Button(test_container, 'Select none', select)
 remove_selection = gp.Button(test_container, 'Remove selected', remove_selected)
+disable = gp.Button(test_container, 'Enable/disable listboxes', enable_disable_listboxes)
 
 test_container.set_grid(8, 2)
 test_container.set_column_weights(1, 1)
@@ -139,6 +151,7 @@ test_container.add(select_where, 6, 2, fill=True)
 test_container.add(select_all, 7, 1, fill=True)
 test_container.add(select_none, 7, 2, fill=True)
 test_container.add(remove_selection, 8, 1, fill=True)
+test_container.add(disable, 8, 2, fill=True)
 
 # Output container
 output_container = gp.LabelContainer(app, 'Output')

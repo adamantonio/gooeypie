@@ -161,6 +161,8 @@ class GooeyPieWidget:
             # Select event associated at the moment with listboxes and dropdowns
             if isinstance(self, Listbox):
                 self.bind('<<ListboxSelect>>', partial(self._event, event_name))
+            elif isinstance(self, ScrolledListbox):
+                self._listbox.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Dropdown):
                 self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
 
@@ -205,6 +207,8 @@ class GooeyPieWidget:
             # Select event associated at the moment with listboxes and dropdowns
             if isinstance(self, Listbox):
                 self.unbind('<<ListboxSelect>>')
+            elif isinstance(self, ScrolledListbox):
+                self._listbox.unbind('<<ListboxSelect>>')
             elif isinstance(self, Dropdown):
                 self.unbind('<<ComboboxSelected>>')
 
@@ -216,10 +220,17 @@ class GooeyPieWidget:
     @disabled.setter
     def disabled(self, value):
         self._disabled = bool(value)
-        if self._disabled:
-            self.state(['disabled'])
+
+        # Different widgets are disabled in different ways...
+        if isinstance(self, (Listbox, Textbox)):
+            state = 'disabled' if self._disabled else 'normal'
+            self.config(state=state)
+        elif isinstance(self, ScrolledListbox):
+            state = 'disabled' if self._disabled else 'normal'
+            self._listbox.config(state=state)
         else:
-            self.state(['!disabled'])
+            state = ['disabled'] if self._disabled else ['!disabled']
+            self.state(state)
 
 
     # TODO: grid (layout) options? Can these be set prior to gridding, or only after they've been added?
@@ -815,7 +826,7 @@ class Listbox(tk.Listbox, GooeyPieWidget):
                 return removed_item
 
 
-class ScrolledListbox(Container):
+class ScrolledListbox(Container, GooeyPieWidget):
     def __init__(self, container, items=()):
         Container.__init__(self, container)
 
@@ -844,6 +855,9 @@ class ScrolledListbox(Container):
         # for the scrollbar visibility if scrollbar visibility is set to 'auto')
         self.select_all = self._listbox.select_all
         self.select_none = self._listbox.select_none
+
+        GooeyPieWidget.__init__(self, container)
+        self._events['select'] = None
 
     def _visible_lines(self):
         """Returns the number of lines that the listbox can currently display by dividing the height of the listbox

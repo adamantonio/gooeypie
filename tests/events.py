@@ -17,6 +17,11 @@ def remove_listeners(event):
                 print(f'Failed to remove {e} from {w}')
 
 
+def enable_disable(event):
+    for w in widgets:
+        w.disabled = not w.disabled
+
+
 def clear_log(event):
     log.text = ''
 
@@ -62,11 +67,13 @@ for count, w in enumerate(widgets):
 log_area = gp.LabelContainer(app, 'Log')
 
 button_area = gp.Container(log_area)
-button_area.set_grid(1, 2)
+button_area.set_grid(1, 3)
 clear = gp.Button(button_area, 'Clear', clear_log)
 remove = gp.Button(button_area, 'Remove all listeners', remove_listeners)
+enable = gp.Button(button_area, 'Enable/disable all', enable_disable)
 button_area.add(clear, 1, 1)
 button_area.add(remove, 1, 2)
+button_area.add(enable, 1, 3)
 
 log = gp.Textbox(log_area, 80)
 log_area.set_grid(2, 1)
