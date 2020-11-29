@@ -20,6 +20,8 @@ class WindowBase(Container):
         self._menu_tkcontrols = {}  # internal dictionary of tk control variables for menu radio buttons and check
         self._preferred_size = [0, 0]  # users preferred size (may be larger to fit in all apps)
 
+        self._interval_callback = None  # Callback function for set interval
+
     def _init_window(self):
         """Sets up the window with the users """
 
@@ -344,6 +346,30 @@ class WindowBase(Container):
     def error_question(self, title, message, buttons='okcancel'):
         """NOT YET IMPLEMENTED"""
         pass
+
+    def set_timeout(self, delay, callback):
+        """Execute the given callback function one time after delay milliseonds"""
+        self._root.after(delay, callback)
+
+    def _trigger_interval_callback(self):
+        """Calls the callback function associated with set_interval and sets up the next call"""
+        if self._interval_callback:
+            self._interval_callback['function']()
+            # Race condition exists here if the interval is cleared during the callback, so another if needed!
+            if self._interval_callback:
+                self._root.after(self._interval_callback['delay'], self._trigger_interval_callback)
+
+    def set_interval(self, delay, callback):
+        """Sets up the callback function to execute every delay milliseconds"""
+        self._interval_callback = {
+            'delay': delay,
+            'function': callback
+        }
+        self._root.after(delay, self._trigger_interval_callback)
+
+    def clear_interval(self):
+        """Stops the set_interval callback"""
+        self._interval_callback = None
 
 
 class Window(WindowBase):

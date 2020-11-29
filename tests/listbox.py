@@ -105,7 +105,6 @@ listbox_container.add(multiple, 2, 1)
 # Scrolled listbox container
 scrolled_listbox_container = gp.LabelContainer(app, 'Scrolling')
 scroll_listbox = gp.ScrolledListbox(scrolled_listbox_container)
-scroll_listbox.items = [n*10 for n in range(1,100)]
 scroll_listbox.add_event_listener('select', select_event)
 scrollbar_option = gp.Dropdown(scrolled_listbox_container, ['auto', 'visible', 'hidden'])
 scrollbar_option.selected_index = 0

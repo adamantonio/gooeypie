@@ -221,14 +221,27 @@ class GooeyPieWidget:
     def disabled(self, value):
         self._disabled = bool(value)
 
-        # Different widgets are disabled in different ways...
+        # Different widgets are disabled in different ways
         if isinstance(self, (Listbox, Textbox)):
+            # tk widgets disabled with config
             state = 'disabled' if self._disabled else 'normal'
             self.config(state=state)
+
         elif isinstance(self, ScrolledListbox):
+            # The listbox is a member of the ScrolledListbox object
             state = 'disabled' if self._disabled else 'normal'
             self._listbox.config(state=state)
+            self._scrollbar.config(state=state)
+
+        elif isinstance(self, RadiogroupBase):
+            # Both the container and each radiobutton are disabled
+            state = ['disabled'] if self._disabled else ['!disabled']
+            self.state(state)  # disable the container
+            for radio in self.winfo_children():
+                radio.state(state)  # disable each radiobutton
+
         else:
+            # most other widgets are ttk widgets disabled with the state() method
             state = ['disabled'] if self._disabled else ['!disabled']
             self.state(state)
 
