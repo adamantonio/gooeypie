@@ -20,7 +20,8 @@ class WindowBase(Container):
         self._menu_tkcontrols = {}  # internal dictionary of tk control variables for menu radio buttons and check
         self._preferred_size = [0, 0]  # users preferred size (may be larger to fit in all apps)
 
-        self._interval_callback = None  # Callback function for set interval
+        self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
+        self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
 
     def _init_window(self):
         """Sets up the window with the users """
@@ -347,10 +348,6 @@ class WindowBase(Container):
         """NOT YET IMPLEMENTED"""
         pass
 
-    def set_timeout(self, delay, callback):
-        """Execute the given callback function one time after delay milliseonds"""
-        self._root.after(delay, callback)
-
     def _trigger_interval_callback(self):
         """Calls the callback function associated with set_interval and sets up the next call"""
         if self._interval_callback:
@@ -370,6 +367,15 @@ class WindowBase(Container):
     def clear_interval(self):
         """Stops the set_interval callback"""
         self._interval_callback = None
+
+    def set_timeout(self, delay, callback):
+        """Execute the given callback function one time after delay milliseonds"""
+        self._timeout = self._root.after(delay, callback)
+
+    def clear_timeout(self):
+        """Clears a timeout function if it exists"""
+        if self._timeout:
+            self._root.after_cancel(self._timeout)
 
 
 class Window(WindowBase):
