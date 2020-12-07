@@ -88,7 +88,8 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
 
             # For a container, set the padding on the edges to 0 or the contents will
             # appear inset compared to other widgets in the window
-            if type(self) == Container:
+            # override_spacing is an ugly hacky solution so that radiobuttons don't inset in their Container
+            if type(self) == Container or kwargs.get('override_spacing'):
                 if column == 1:
                     padx[0] = 0
                 if column + (column_span - 1) == len(self._grid[0]):

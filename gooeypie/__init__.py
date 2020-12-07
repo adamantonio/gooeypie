@@ -10,7 +10,7 @@ class WindowBase(Container):
     Provides functions for window options like size, title and menus
     """
     def __init__(self, root, title, *args):
-        self._root = root   # for the class GooeyPieApp, this is the tk.Tk() instance
+        self._root = root   # for the class GooeyPieApp, this is the tkinter.Tk() instance
         self._root.title(title)  # title of the window
 
         Container.__init__(self, self._root)

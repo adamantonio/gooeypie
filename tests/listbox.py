@@ -89,12 +89,14 @@ def select_event(event):
 def enable_disable_listboxes(event):
     listbox.disabled = not listbox.disabled
     scroll_listbox.disabled = not scroll_listbox.disabled
-    output.prepend('Disabling listboxes\n')
+    state = 'Disabling' if listbox.disabled else 'Enabling'
+    output.prepend(f'{state} listboxes\n')
 
 
 # Listbox Container
 listbox_container = gp.LabelContainer(app, 'Listbox')
 listbox = gp.Listbox(listbox_container)
+listbox.width = 30
 multiple = gp.Checkbox(listbox_container, 'Allow multiple selection')
 multiple.add_event_listener('change', set_multiple)
 listbox_container.set_grid(2, 1)
@@ -106,6 +108,7 @@ listbox_container.add(multiple, 2, 1)
 scrolled_listbox_container = gp.LabelContainer(app, 'Scrolling')
 scroll_listbox = gp.ScrolledListbox(scrolled_listbox_container)
 scroll_listbox.add_event_listener('select', select_event)
+scroll_listbox.width = 30
 scrollbar_option = gp.Dropdown(scrolled_listbox_container, ['auto', 'visible', 'hidden'])
 scrollbar_option.selected_index = 0
 scrollbar_option.add_event_listener('select', set_scrollbar)
@@ -158,7 +161,6 @@ output = gp.Textbox(output_container)
 output.height = 10
 output_container.set_grid(1, 1)
 output_container.add(output, 1, 1, fill=True, stretch=True)
-
 
 # Add containers to main window and run
 app.set_grid(2, 3)

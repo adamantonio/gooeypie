@@ -4,7 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
-from gooeypie.containers import Container   # Used for the ScrolledListbox widget
+from gooeypie.containers import Container, LabelContainer   # Used for the ScrolledListbox & Radiogroup widgets
 
 import platform
 
@@ -230,8 +230,7 @@ class GooeyPieWidget:
         elif isinstance(self, ScrolledListbox):
             # The listbox is a member of the ScrolledListbox object
             state = 'disabled' if self._disabled else 'normal'
-            self._listbox.config(state=state)
-            self._scrollbar.config(state=state)
+            self._listbox.disabled = True
 
         elif isinstance(self, RadiogroupBase):
             # Both the container and each radiobutton are disabled
@@ -724,6 +723,16 @@ class Listbox(tk.Listbox, GooeyPieWidget):
         self.configure(height=lines)
 
     @property
+    def width(self):
+        """Returns the number of lines in the listbox"""
+        return self.cget('width')
+
+    @width.setter
+    def width(self, chars):
+        """Sets the width of the listbox, in characters. Default is 20."""
+        self.configure(width=chars)
+
+    @property
     def items(self):
         """Returns a COPY of the items in the listbox"""
         return list(self.get(0, 'end'))
@@ -770,7 +779,7 @@ class Listbox(tk.Listbox, GooeyPieWidget):
             self.select_none()
 
         self.selection_set(index)
-        self.see(index)  # Show the selected line (it may not be in view)
+        self.see(index)  # Show the selected line (in case it is not be in view)
 
     @property
     def selected(self):
@@ -919,6 +928,14 @@ class ScrolledListbox(Container, GooeyPieWidget):
     @height.setter
     def height(self, lines):
         self._listbox.configure(height=lines)
+
+    @property
+    def width(self):
+        return self._listbox.width
+
+    @width.setter
+    def width(self, chars):
+        self._listbox.width = chars
 
     @property
     def scrollbar(self):
@@ -1145,12 +1162,20 @@ class RadiogroupBase(GooeyPieWidget):
         # If images are used (to be implemented, need to support passing a list of 2-tuples,
         # where first item is the image, second is the value returned
 
-        if isinstance(choices, (list, tuple)):
-            side = 'left' if orient == 'horizontal' else 'top'
-            for choice in choices:
-                radiobutton = ttk.Radiobutton(self, text=choice, variable=self._selected, value=choice)
-                # TODO: don't hard code the padding (config file somewhere somehow)
-                radiobutton.pack(expand=True, fill='x', padx=(2, 5), pady=2, side=side)
+        length = len(choices)
+        # Set the appropriate grid based on the orientation. Create associated lists used when calling add()
+        if orient == 'vertical':
+            self.set_grid(length, 1)
+            rows = [n + 1 for n in range(length)]
+            columns = [1] * length
+        else:
+            self.set_grid(1, length)
+            rows = [1] * length
+            columns = [n + 1 for n in range(length)]
+
+        for pos, choice in enumerate(choices):
+            radiobutton = ttk.Radiobutton(self, text=choice, variable=self._selected, value=choice)
+            self.add(radiobutton, rows[pos], columns[pos], align='left', override_spacing=True)
 
     @property
     def options(self):
@@ -1168,7 +1193,60 @@ class RadiogroupBase(GooeyPieWidget):
         self._selected.set(value)
 
 
-class Radiogroup(ttk.Frame, RadiogroupBase):
+class Radiogroup(Container, RadiogroupBase):
+    """A set of radio buttons"""
+    def __init__(self, container, choices, orient='vertical'):
+        Container.__init__(self, container)
+        RadiogroupBase.__init__(self, container, choices, orient)
+
+    def __str__(self):
+        return f'<Radiogroup {tuple(self.options)}>'
+
+
+class LabelRadiogroup(LabelContainer, RadiogroupBase):
+    """A set of radio buttons in a label frame"""
+    def __init__(self, container, title, choices, orient='vertical'):
+        LabelContainer.__init__(self, container, title)
+        RadiogroupBase.__init__(self, container, choices, orient)
+
+    def __str__(self):
+        return f'<LabelRadiogroup {tuple(self.options)}>'
+
+
+
+class OldRadiogroupBase(GooeyPieWidget):
+    """Base class used by Radiogroup and LabelledRadiogroup"""
+    def __init__(self, container, choices, orient):
+        GooeyPieWidget.__init__(self, container)
+        self._events['change'] = None   # Radiobuttons support the 'change' event
+        self._selected = tk.StringVar()
+
+        # If images are used (to be implemented, need to support passing a list of 2-tuples,
+        # where first item is the image, second is the value returned
+
+        if isinstance(choices, (list, tuple)):
+            side = 'left' if orient == 'horizontal' else 'top'
+            for choice in choices:
+                radiobutton = ttk.Radiobutton(self, text=choice, variable=self._selected, value=choice)
+                radiobutton.pack(expand=True, fill='x', padx=8, pady=8, side=side)
+
+    @property
+    def options(self):
+        return tuple(widget.cget('text') for widget in self.winfo_children())
+
+    @property
+    def selected(self):
+        if self._selected.get():
+            return self._selected.get()
+        else:
+            return None
+
+    @selected.setter
+    def selected(self, value):
+        self._selected.set(value)
+
+
+class OldRadiogroup(ttk.Frame, RadiogroupBase):
     """A set of radio buttons"""
     def __init__(self, container, choices, orient='vertical'):
         ttk.Frame.__init__(self, container)
@@ -1178,7 +1256,7 @@ class Radiogroup(ttk.Frame, RadiogroupBase):
         return f'<Radiogroup {tuple(self.options)}>'
 
 
-class LabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
+class OldLabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
     """A set of radio buttons in a label frame"""
     def __init__(self, container, title, choices, orient='vertical'):
         ttk.LabelFrame.__init__(self, container, text=title)
