@@ -4,7 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
-from gooeypie.containers import Container, LabelContainer   # Used for the ScrolledListbox & Radiogroup widgets
+from gooeypie.containers import *   # Used for the ScrolledListbox & Radiogroup widgets
 
 import platform
 
@@ -1154,7 +1154,7 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 
 class RadiogroupBase(GooeyPieWidget):
     """Base class used by Radiogroup and LabelledRadiogroup"""
-    def __init__(self, container, choices, orient):
+    def __init__(self, container, choices, orient, override_spacing=False):
         GooeyPieWidget.__init__(self, container)
         self._events['change'] = None   # Radiobuttons support the 'change' event
         self._selected = tk.StringVar()
@@ -1175,7 +1175,31 @@ class RadiogroupBase(GooeyPieWidget):
 
         for pos, choice in enumerate(choices):
             radiobutton = ttk.Radiobutton(self, text=choice, variable=self._selected, value=choice)
-            self.add(radiobutton, rows[pos], columns[pos], align='left', override_spacing=True)
+
+            # default margins from ContainerBase: [top, right, bottom, left]
+            padx = ContainerBase.spacing['widget_spacing_x']
+            pady = ContainerBase.spacing['widget_spacing_y']
+
+            if isinstance(self, Radiogroup):
+                # Container already has margins around the frame, set margins to zero
+                margins = [0, 0, 0, 0]
+                if pos != length - 1:
+                    # Add appropriate spacing between radio items by changing horizontal or vertical margin
+                    # (depending on orientation) on all items except for the last one
+                    if orient == 'vertical':
+                        margins[2] = pady[1]
+                    else:
+                        # Bit more spacing between horizontal items
+                        margins[1] = padx[1] * 2
+
+            if isinstance(self, LabelRadiogroup):
+                margins = ['auto'] * 4
+                # For vertically aligned radiogroups, reduce the vertical spacing between items.
+                if orient == 'vertical':
+                    if pos != length - 1:
+                        margins[2] = 0
+
+            self.add(radiobutton, rows[pos], columns[pos], align='left', margins=margins)
 
     @property
     def options(self):
@@ -1197,7 +1221,7 @@ class Radiogroup(Container, RadiogroupBase):
     """A set of radio buttons"""
     def __init__(self, container, choices, orient='vertical'):
         Container.__init__(self, container)
-        RadiogroupBase.__init__(self, container, choices, orient)
+        RadiogroupBase.__init__(self, container, choices, orient, True)
 
     def __str__(self):
         return f'<Radiogroup {tuple(self.options)}>'
