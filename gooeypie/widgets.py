@@ -1216,6 +1216,18 @@ class RadiogroupBase(GooeyPieWidget):
     def selected(self, value):
         self._selected.set(value)
 
+    def deselect(self):
+        """Deselects all options"""
+        self._selected.set(None)
+
+    def disable(self, index):
+        """Disables the radiobutton at the given index"""
+        self.winfo_children()[index].configure(state='disabled')
+
+    def enable(self, index):
+        """Disables the radiobutton at the given index"""
+        self.winfo_children()[index].configure(state='enabled')
+
 
 class Radiogroup(Container, RadiogroupBase):
     """A set of radio buttons"""
