@@ -76,7 +76,9 @@ class GooeyPieWidget:
 
         # All events initially set to None
         self._events = {event_name: None for event_name in self._tk_event_mappings.keys()}
+
         self._disabled = False
+        self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
 
     def _event(self, event_name, tk_event=None):
         """Constructs a GooeyPie Event object and calls the registered callback"""
@@ -269,6 +271,38 @@ class GooeyPieWidget:
     def get_info(self):
         return self.grid_info()
         # Sample output: Grid info: {'in': <guilite.GuiLiteApp object .!guiliteapp>, 'column': 1, 'row': 1, 'columnspan': 1, 'rowspan': 1, 'ipadx': 0, 'ipady': 0, 'padx': (0, 10), 'pady': (0, 10), 'sticky': 'nw'}
+
+    @property
+    def margin_top(self):
+        return self.margins[0]
+
+    @margin_top.setter
+    def margin_top(self, value):
+        self.margins[0] = value
+
+    @property
+    def margin_right(self):
+        return self.margins[1]
+
+    @margin_right.setter
+    def margin_right(self, value):
+        self.margins[1] = value
+
+    @property
+    def margin_bottom(self):
+        return self.margins[2]
+
+    @margin_bottom.setter
+    def margin_bottom(self, value):
+        self.margins[2] = value
+
+    @property
+    def margin_left(self):
+        return self.margins[3]
+
+    @margin_left.setter
+    def margin_left(self, value):
+        self.margins[3] = value
 
 
 class Label(ttk.Label, GooeyPieWidget):
@@ -1195,6 +1229,7 @@ class RadiogroupBase(GooeyPieWidget):
             if isinstance(self, LabelRadiogroup):
                 margins = ['auto'] * 4
                 # For vertically aligned radiogroups, reduce the vertical spacing between items.
+
                 if orient == 'vertical':
                     if pos != length - 1:
                         margins[2] = 0

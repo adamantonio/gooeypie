@@ -34,6 +34,40 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
             ttk.Frame.__init__(self, master)
 
         self._grid = None
+        self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
+
+    @property
+    def margin_top(self):
+        return self.margins[0]
+
+    @margin_top.setter
+    def margin_top(self, value):
+        self.margins[0] = value
+
+    @property
+    def margin_right(self):
+        return self.margins[1]
+
+    @margin_right.setter
+    def margin_right(self, value):
+        self.margins[1] = value
+
+    @property
+    def margin_bottom(self):
+        return self.margins[2]
+
+    @margin_bottom.setter
+    def margin_bottom(self, value):
+        self.margins[2] = value
+
+    @property
+    def margin_left(self):
+        return self.margins[3]
+
+    @margin_left.setter
+    def margin_left(self, value):
+        self.margins[3] = value
+
 
     def set_grid(self, rows, columns):
         """
@@ -102,7 +136,7 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
 
             # Margins can be overridden - currently used internally by radiogroups
             # margin = [top, right, bottom, left]
-            margins = kwargs.get('margins')
+            margins = kwargs.get('margins') or widget.margins
             if margins:
                 top, right, bottom, left = margins
                 if top != 'auto':
