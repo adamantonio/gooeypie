@@ -43,13 +43,13 @@ listbox = gp.Listbox(app, default_options)
 listbox.height = 4
 secret = gp.Secret(app)
 slider = gp.Slider(app, 1, 10)
-spinbox = gp.Spinbox(app, 1, 10)
+number = gp.Number(app, 1, 10)
 style_label = gp.StyleLabel(app, 'Style Label')
 textbox = gp.Textbox(app)
 
 widgets = (button, checkbox, dropdown, hyperlink, image,
            entry, label, radios_label, radios, listbox, secret,
-           slider, spinbox, style_label, textbox)
+           slider, number, style_label, textbox)
 
 app.set_grid(len(widgets), 2)
 

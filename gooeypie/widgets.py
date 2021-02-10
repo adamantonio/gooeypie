@@ -141,7 +141,7 @@ class GooeyPieWidget:
                 # The tk callback for a slider passes an argument that is the value of the slider
                 self.configure(command=partial(self._slider_change_event, event_name))
 
-            if isinstance(self, (Checkbox, Spinbox)):
+            if isinstance(self, (Checkbox, Number)):
                 # change method available on Radiobutton and Checkbox objects
                 self.configure(command=partial(self._event, event_name))
 
@@ -188,7 +188,7 @@ class GooeyPieWidget:
                 for radiobutton in self.winfo_children():
                     radiobutton.configure(command='')
 
-            if isinstance(self, (Slider, Checkbox, Spinbox)):
+            if isinstance(self, (Slider, Checkbox, Number)):
                 self.configure(command='')
 
             if isinstance(self, Input):
@@ -1381,7 +1381,7 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
             raise IndexError(f"Index {index} out of range")
 
 
-class Spinbox(ttk.Spinbox, GooeyPieWidget):
+class Number(ttk.Spinbox, GooeyPieWidget):
     def __init__(self, container, low, high, increment=1):
         GooeyPieWidget.__init__(self, container)
         ttk.Spinbox.__init__(self, container, from_=low, to=high, increment=increment, wrap=True)
@@ -1390,14 +1390,24 @@ class Spinbox(ttk.Spinbox, GooeyPieWidget):
         self._events['change'] = None
 
     def __str__(self):
-        return f'<Spinbox from {self.cget("from")} to {self.cget("to")}>'
+        return f'<Number widget from {self.cget("from")} to {self.cget("to")}>'
 
     @property
     def value(self):
+        """Returns the value of the Number widget"""
         return self.get()
 
     @value.setter
     def value(self, value):
+        """Sets the value of the number widget"""
+
+        if type(value) not in (int, float):
+            raise ValueError(f'Invalid number {repr(value)} specified for {self}')
+        if value < self.cget('from'):
+            raise ValueError(f'{value} is below the minimum value for {self}')
+        if value > self.cget('to'):
+            raise ValueError(f'{value} is above the maximum value for {self}')
+
         self.set(value)
 
     @property
