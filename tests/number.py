@@ -12,8 +12,7 @@ def set_value(event):
         standard_number.value = target
 
     if event.widget == set_float_button:
-        # target = float(set_float_input.text)
-        target = ''
+        target = float(set_float_input.text)
         out.prepend(f'Setting float to {target}\n')
         float_number.value = target
 
@@ -31,6 +30,8 @@ standard_number.disabled = True
 
 evens_label = gp.Label(numbers, 'Evens ints <= 10')
 evens_number = gp.Number(numbers, 2, 10, 2)
+evens_number.read_only = True
+evens_number.wrap = False
 
 float_label = gp.Label(numbers, 'Float 0.0 to 10.0')
 float_number = gp.Number(numbers, 0, 10, 0.1)

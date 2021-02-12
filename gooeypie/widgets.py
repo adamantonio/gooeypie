@@ -1419,6 +1419,26 @@ class Number(ttk.Spinbox, GooeyPieWidget):
         """Sets the width of the spinbox in characters (includes the control buttons)"""
         self.configure(width=value)
 
+    @property
+    def read_only(self):
+        return self.cget('state')
+
+    @read_only.setter
+    def read_only(self, state):
+        if state:
+            setting = 'readonly'
+        else:
+            setting = 'normal'
+        self.configure(state=setting)
+
+    @property
+    def wrap(self):
+        return self.cget('wrap')
+
+    @wrap.setter
+    def wrap(self, state):
+        self.configure(wrap=bool(state))
+
 
 class Table(ttk.Treeview, GooeyPieWidget):
     """For displaying tabular data"""
