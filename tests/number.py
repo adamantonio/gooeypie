@@ -2,7 +2,10 @@ import gooeypie as gp
 
 
 def get_value(event):
-    out.prepend(f'Value of "1 to 10" is {standard_number.value}\n')
+    # out.prepend(f'Value of "1 to 10" is {standard_number.value}\nType is {type(standard_number.value)}\n')
+    # out.prepend(f'{type(standard_number.cget("increment"))}')
+    w = float_number
+    print(f'{w.value} ({type(w.value)})')
 
 
 def set_value(event):
@@ -26,7 +29,6 @@ log = gp.LabelContainer(app, 'Log')
 # Number widgets
 standard_label = gp.Label(numbers, 'Integer 1 to 10')
 standard_number = gp.Number(numbers, 1, 10)
-standard_number.disabled = True
 
 evens_label = gp.Label(numbers, 'Evens ints <= 10')
 evens_number = gp.Number(numbers, 2, 10, 2)
@@ -36,14 +38,13 @@ evens_number.wrap = False
 float_label = gp.Label(numbers, 'Float 0.0 to 10.0')
 float_number = gp.Number(numbers, 0, 10, 0.1)
 
-numbers.set_grid(3, 2)
+numbers.set_grid(4, 2)
 numbers.add(standard_label, 1, 1)
 numbers.add(standard_number, 1, 2)
 numbers.add(evens_label, 2, 1)
 numbers.add(evens_number, 2, 2)
 numbers.add(float_label, 3, 1)
 numbers.add(float_number, 3, 2)
-
 
 # Tests
 value_button = gp.Button(tests, 'Get value', get_value)

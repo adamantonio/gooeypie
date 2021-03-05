@@ -97,6 +97,10 @@ class GooeyPieWidget:
             self._previous_value = self._value.get()  # Update the previous value
             self._event(event_name)
 
+    def _number_change_event(self, event_name, tkinter_event_object):
+        """For implementing a change event on change in the Number ttk.Spinbox widget"""
+        self._event(event_name)
+
     def _text_change_event(self, event_name, a, b, c):
         """To implement the change event for the Input/Textbox widget, a trace must be
         added to the variable associated with the Input. The trace command sends
@@ -141,9 +145,17 @@ class GooeyPieWidget:
                 # The tk callback for a slider passes an argument that is the value of the slider
                 self.configure(command=partial(self._slider_change_event, event_name))
 
-            if isinstance(self, (Checkbox, Number)):
+            if isinstance(self, Checkbox):
                 # change method available on Radiobutton and Checkbox objects
                 self.configure(command=partial(self._event, event_name))
+
+            if isinstance(self, Number):
+                # Two ways to trigger the change event on a Number widget:
+                # 1. Using the arrows on the widget (or arrow keys on keyboard)
+                # 2. Pressing 'enter' in the text entry
+                self.configure(command=partial(self._event, event_name))
+                # bind() passes an event object
+                self.bind('<Return>', partial(self._number_change_event, event_name))
 
             if isinstance(self, Input):
                 # Add a trace to the string variable associated with the Input for listening for the 'change' event
@@ -188,8 +200,12 @@ class GooeyPieWidget:
                 for radiobutton in self.winfo_children():
                     radiobutton.configure(command='')
 
-            if isinstance(self, (Slider, Checkbox, Number)):
+            if isinstance(self, (Slider, Checkbox)):
                 self.configure(command='')
+
+            if isinstance(self, Number):
+                self.configure(command='')
+                self.unbind('<Return>')
 
             if isinstance(self, Input):
                 # If there is a change event, then
@@ -1394,8 +1410,26 @@ class Number(ttk.Spinbox, GooeyPieWidget):
 
     @property
     def value(self):
-        """Returns the value of the Number widget"""
-        return self.get()
+        """Returns the value of the Number widget according to the type of increment
+        Note: The ttk.Spinbox widget get() method always returns a string
+        """
+        val = self.get()
+        try:
+            if type(self.cget('increment')) == float:
+                # If the increment is a float, attempt to return a float
+                return float(val)
+            else:
+                # if the increment is an int, still return a float if the user has
+                # entered one. Otherwise, attempt to return an int.
+                val_as_float = float(val)
+                if val_as_float.is_integer():
+                    return int(val_as_float)
+                else:
+                    return val_as_float
+
+        except ValueError:
+            # If the user has modified the value to be non-numeric, return the value as a string (tkinter default)
+            return val
 
     @value.setter
     def value(self, value):
