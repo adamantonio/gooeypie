@@ -1396,6 +1396,10 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
         except Exception:
             raise IndexError(f"Index {index} out of range")
 
+    def deselect(self):
+        """Sets the selected item in the dropdown to a blank"""
+        self.set('')
+
 
 class Number(ttk.Spinbox, GooeyPieWidget):
     def __init__(self, container, low, high, increment=1):
@@ -1433,14 +1437,15 @@ class Number(ttk.Spinbox, GooeyPieWidget):
 
     @value.setter
     def value(self, value):
-        """Sets the value of the number widget"""
+        """Sets the value of the number widget, but does not enforce typing in line with the increment"""
 
-        if type(value) not in (int, float):
-            raise ValueError(f'Invalid number {repr(value)} specified for {self}')
-        if value < self.cget('from'):
-            raise ValueError(f'{value} is below the minimum value for {self}')
-        if value > self.cget('to'):
-            raise ValueError(f'{value} is above the maximum value for {self}')
+        # Typesafe setter no being used:
+        # if type(value) not in (int, float):
+        #     raise ValueError(f'Invalid number {repr(value)} specified for {self}')
+        # if value < self.cget('from'):
+        #     raise ValueError(f'{value} is below the minimum value for {self}')
+        # if value > self.cget('to'):
+        #     raise ValueError(f'{value} is above the maximum value for {self}')
 
         self.set(value)
 
