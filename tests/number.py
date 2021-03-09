@@ -2,81 +2,186 @@ import gooeypie as gp
 
 
 def get_value(event):
-    # out.prepend(f'Value of "1 to 10" is {standard_number.value}\nType is {type(standard_number.value)}\n')
-    # out.prepend(f'{type(standard_number.cget("increment"))}')
-    w = float_number
-    print(f'{w.value} ({type(w.value)})')
+    if event.widget == default_get:
+        target = default_number
+    elif event.widget == inc_get:
+        target = inc_number
+    elif event.widget == float_get:
+        target = float_number
+    else:
+        print('Something went wrong')
+
+    log.prepend_line(f'Value of {target} is {target.value}')
 
 
 def set_value(event):
-    if event.widget == set_std_button:
-        target = int(set_std_input.text)
-        out.prepend(f'Setting int to {target}\n')
-        standard_number.value = target
+    if event.widget == default_set:
+        target = default_number
+        value = default_set_value
+    elif event.widget == inc_set:
+        target = inc_number
+        value = inc_set_value
+    elif event.widget == float_set:
+        target = float_number
+        value = float_set_value
+    else:
+        print('Something went wrong')
 
-    if event.widget == set_float_button:
-        target = float(set_float_input.text)
-        out.prepend(f'Setting float to {target}\n')
-        float_number.value = target
+    target.value = value.text
+    log.prepend_line(f'Value of {target} set to {value.text}')
 
 
-# Create app and containers
-app = gp.GooeyPieApp('Number tests')
-numbers = gp.LabelContainer(app, 'Widgets')
-tests = gp.LabelContainer(app, 'Tests')
-log = gp.LabelContainer(app, 'Log')
+def enable(event):
+    if event.widget == default_enable:
+        target = default_number
+    elif event.widget == inc_enable:
+        target = inc_number
+    elif event.widget == float_enable:
+        target = float_number
+    else:
+        print('Something went wrong')
+
+    target.disabled = not target.disabled
+    log.prepend_line(f'Disabled state of {target} set to {target.disabled}')
+
+
+def read_only(event):
+    if event.widget == default_read_only:
+        target = default_number
+    elif event.widget == inc_read_only:
+        target = inc_number
+    elif event.widget == float_read_only:
+        target = float_number
+    else:
+        print('Something went wrong')
+
+    target.read_only = not target.read_only
+    log.prepend_line(f'Readonly state of {target} set to {target.read_only}')
+
+
+def wrap(event):
+    if event.widget == default_wrap:
+        target = default_number
+    elif event.widget == inc_wrap:
+        target = inc_number
+    elif event.widget == float_wrap:
+        target = float_number
+    else:
+        print('Something went wrong')
+
+    target.wrap = not target.wrap
+    log.prepend_line(f'Wrap state of {target} set to {target.wrap}')
+
+
+def toggle_change_events(event):
+    if change.checked:
+        default_number.add_event_listener('change', value_changed)
+        inc_number.add_event_listener('change', value_changed)
+        float_number.add_event_listener('change', value_changed)
+    else:
+        default_number.remove_event_listener('change')
+        inc_number.remove_event_listener('change')
+        float_number.remove_event_listener('change')
+
+
+def value_changed(event):
+    log.prepend_line(f'Value of {event.widget} changed to {event.widget.value}')
+
+
+app = gp.GooeyPieApp('Number widget tests')
+
+# Widgets container
+widgets = gp.LabelContainer(app, 'Widgets and tests')
+
+# Labels
+default_label = gp.Label(widgets, 'Integers 1 to 10 (default increment)')
+inc_label = gp.Label(widgets, 'Integers 0 to 255 (increment 5)')
+float_label = gp.Label(widgets, 'Floats 0 to 1.0 (increment 0.1)')
 
 # Number widgets
-standard_label = gp.Label(numbers, 'Integer 1 to 10')
-standard_number = gp.Number(numbers, 1, 10)
+default_number = gp.Number(widgets, 1, 10)
+inc_number = gp.Number(widgets, 0, 255, 5)
+float_number = gp.Number(widgets, 0, 1, 0.1)
 
-evens_label = gp.Label(numbers, 'Evens ints <= 10')
-evens_number = gp.Number(numbers, 2, 10, 2)
-evens_number.read_only = True
-evens_number.wrap = False
+default_get = gp.Button(widgets, 'Get value', get_value)
+inc_get = gp.Button(widgets, 'Get value', get_value)
+float_get = gp.Button(widgets, 'Get value', get_value)
 
-float_label = gp.Label(numbers, 'Float 0.0 to 10.0')
-float_number = gp.Number(numbers, 0, 10, 0.1)
+default_set = gp.Button(widgets, 'Set value to', set_value)
+inc_set = gp.Button(widgets, 'Set value to', set_value)
+float_set = gp.Button(widgets, 'Set value to', set_value)
 
-numbers.set_grid(4, 2)
-numbers.add(standard_label, 1, 1)
-numbers.add(standard_number, 1, 2)
-numbers.add(evens_label, 2, 1)
-numbers.add(evens_number, 2, 2)
-numbers.add(float_label, 3, 1)
-numbers.add(float_number, 3, 2)
+default_set_value = gp.Input(widgets)
+default_set_value.width = 8
+default_set_value.margin_left = 0
+inc_set_value = gp.Input(widgets)
+inc_set_value.width = 8
+inc_set_value.margin_left = 0
+float_set_value = gp.Input(widgets)
+float_set_value.width = 8
+float_set_value.margin_left = 0
 
-# Tests
-value_button = gp.Button(tests, 'Get value', get_value)
+default_enable = gp.Button(widgets, 'Enable/disable', enable)
+inc_enable = gp.Button(widgets, 'Enable/disable', enable)
+float_enable = gp.Button(widgets, 'Enable/disable', enable)
 
-set_std_button = gp.Button(tests, 'Set value', set_value)
-set_std_input = gp.Input(tests)
+default_read_only = gp.Button(widgets, 'Toggle readonly', read_only)
+inc_read_only = gp.Button(widgets, 'Toggle readonly', read_only)
+float_read_only = gp.Button(widgets, 'Toggle readonly', read_only)
 
-set_float_button = gp.Button(tests, 'Set value', set_value)
-set_float_input = gp.Input(tests)
-
-tests.set_grid(3, 2)
-tests.add(value_button, 1, 1, column_span=2)
-tests.add(set_std_button, 2, 1)
-tests.add(set_std_input, 2, 2)
-tests.add(set_float_button, 3, 1)
-tests.add(set_float_input, 3, 2)
-
+default_wrap = gp.Button(widgets, 'Toggle wrap', wrap)
+inc_wrap = gp.Button(widgets, 'Toggle wrap', wrap)
+float_wrap = gp.Button(widgets, 'Toggle wrap', wrap)
 
 
-# Log
-out = gp.Textbox(log)
+# Add all testing widgets and tests to widget container
+widgets.set_grid(3, 8)
 
-log.set_grid(1, 1)
-log.add(out, 1, 1, fill=True)
+widgets.add(default_label, 1, 1, valign='middle')
+widgets.add(default_number, 1, 2, fill=True, valign='middle')
+widgets.add(default_get, 1, 3)
+widgets.add(default_set, 1, 4)
+widgets.add(default_set_value, 1, 5, valign='middle')
+widgets.add(default_enable, 1, 6)
+widgets.add(default_read_only, 1, 7)
+widgets.add(default_wrap, 1, 8)
 
+widgets.add(inc_label, 2, 1, valign='middle')
+widgets.add(inc_number, 2, 2, fill=True, valign='middle')
+widgets.add(inc_get, 2, 3)
+widgets.add(inc_set, 2, 4)
+widgets.add(inc_set_value, 2, 5, valign='middle')
+widgets.add(inc_enable, 2, 6)
+widgets.add(inc_read_only, 2, 7)
+widgets.add(inc_wrap, 2, 8)
 
-# Add containers to app
-app.set_grid(2, 2)
-app.add(numbers, 1, 1, stretch=True)
-app.add(tests, 1, 2, stretch=True)
-app.add(log, 2, 1, column_span=2, fill=True)
+widgets.add(float_label, 3, 1, valign='middle')
+widgets.add(float_number, 3, 2, fill=True, valign='middle')
+widgets.add(float_get, 3, 3)
+widgets.add(float_set, 3, 4)
+widgets.add(float_set_value, 3, 5, valign='middle')
+widgets.add(float_enable, 3, 6)
+widgets.add(float_read_only, 3, 7)
+widgets.add(float_wrap, 3, 8)
 
+# Log container
+log_container = gp.LabelContainer(app, 'Log')
+log = gp.Textbox(log_container)
+log.height = 20
+log_container.set_grid(1, 1)
+log_container.add(log, 1, 1, fill=True)
+
+# Events
+change = gp.Checkbox(app, 'Enable change event on Number widgets')
+change.add_event_listener('change', toggle_change_events)
+
+app.set_grid(3, 1)
+app.add(widgets, 1, 1)
+app.add(change, 2, 1)
+app.add(log_container, 3, 1, fill=True)
+
+log.append_line(f'Added {default_number}')
+log.append_line(f'Added {inc_number}')
+log.append_line(f'Added {float_number}')
 
 app.run()
-

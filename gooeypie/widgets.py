@@ -1148,9 +1148,17 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
         """Adds the given text to the beginning of the textbox"""
         self.text = f'{text}{self.text}'
 
+    def prepend_line(self, text):
+        """Adds the given text to the beginning of the textbox including a newline"""
+        self.prepend(f'{text}\n')
+
     def append(self, text):
         """Adds the given text to the end of the textbox"""
         self.text = f'{self.text}{text}'
+
+    def append_line(self, text):
+        """Adds the given text to the end of the textbox including a newline"""
+        self.append(f'{text}\n')
 
 
 class ImageButton(Button):
@@ -1407,10 +1415,13 @@ class Number(ttk.Spinbox, GooeyPieWidget):
         ttk.Spinbox.__init__(self, container, from_=low, to=high, increment=increment, wrap=True)
         self.set(low)
         self.width = len(str(high)) + 4
+        self._read_only = False  # Used to track state, since GooeyPie treats read_only and disabled as separate states
         self._events['change'] = None
 
     def __str__(self):
-        return f'<Number widget from {self.cget("from")} to {self.cget("to")}>'
+        low = type(self.cget("increment"))(self.cget("from"))  # format low and high with appropriate type
+        high = type(self.cget("increment"))(self.cget("to"))
+        return f'<Number widget from {low} to {high}>'
 
     @property
     def value(self):
@@ -1438,16 +1449,14 @@ class Number(ttk.Spinbox, GooeyPieWidget):
     @value.setter
     def value(self, value):
         """Sets the value of the number widget, but does not enforce typing in line with the increment"""
-
-        # Typesafe setter no being used:
+        self.set(value)
+        # Typesafe setter not being used:
         # if type(value) not in (int, float):
         #     raise ValueError(f'Invalid number {repr(value)} specified for {self}')
         # if value < self.cget('from'):
         #     raise ValueError(f'{value} is below the minimum value for {self}')
         # if value > self.cget('to'):
         #     raise ValueError(f'{value} is above the maximum value for {self}')
-
-        self.set(value)
 
     @property
     def width(self):
@@ -1458,21 +1467,43 @@ class Number(ttk.Spinbox, GooeyPieWidget):
         """Sets the width of the spinbox in characters (includes the control buttons)"""
         self.configure(width=value)
 
+    # The underlying ttk widget (Spinbox) has 3 states: normal, disabled and readonly, so the read_only getter/setter
+    # and disabled getter/setter is overridden to deal with GooeyPie supporting both properties 'separately'. In short,
+    # a disabled widget cannot have its read_only property altered, but no error is raised if that happens
     @property
     def read_only(self):
-        return self.cget('state')
+        return self._read_only
 
     @read_only.setter
     def read_only(self, state):
-        if state:
-            setting = 'readonly'
+        # read_only state change only available when the widget is not disabled
+        if not self.disabled:
+            self._read_only = bool(state)
+            if self._read_only:
+                setting = 'readonly'
+            else:
+                setting = 'normal'
+            self.configure(state=setting)
+
+    @property
+    def disabled(self):
+        return self._disabled
+
+    @disabled.setter
+    def disabled(self, value):
+        self._disabled = bool(value)
+        if self._disabled:
+            self.configure(state='disabled')
         else:
-            setting = 'normal'
-        self.configure(state=setting)
+            # restore the read only state of the Number to its previously set value
+            if self._read_only:
+                self.configure(state='readonly')
+            else:
+                self.configure(state='normal')
 
     @property
     def wrap(self):
-        return self.cget('wrap')
+        return bool(self.cget('wrap'))
 
     @wrap.setter
     def wrap(self, state):
@@ -1483,6 +1514,9 @@ class Table(ttk.Treeview, GooeyPieWidget):
     """For displaying tabular data"""
     def columns(self, cols):
         """Sets the column names of the table"""
+        pass
 
     def add_data(self, data):
         """Adds a row of data to the table"""
+        pass
+
