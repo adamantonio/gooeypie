@@ -22,6 +22,9 @@ class WindowBase(Container):
 
         self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
         self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
+        self._icon = None  # Window icon
+
+        self.storage = {}  # Global storage variable
 
     def _init_window(self):
         """Sets up the window with the users """
@@ -31,7 +34,6 @@ class WindowBase(Container):
             self._root.config(menu=self._menubar)
 
         # Add the main Container to the window
-        # self.grid(padx=(16, 0), pady=(16, 0), sticky='nsew')
         self.pack(fill='both', expand=True, padx=0, pady=0)
 
         # Call update to get width and height info, then set the min size to these values
@@ -58,6 +60,11 @@ class WindowBase(Container):
 
     def set_size(self, width, height):
         self._preferred_size = [width, height]
+
+    def set_icon(self, image_file):
+        self._icon = image_file
+        self._root.iconbitmap(image_file)
+        # print('we tried')
 
     @property
     def width(self):
@@ -100,7 +107,13 @@ class WindowBase(Container):
         pass
 
     def font_available(self, font_name):
-        return font_name in font.families(self)
+        """Returns true if font_name is installed on the system, case-insensitive"""
+        # TODO: check if MacOS cares about case for font names
+        return font_name.lower() in [f.lower() for f in self.fonts()]
+
+    def fonts(self):
+        """Returns a list of all system fonts"""
+        return list(font.families(self))
 
     def _create_menu(self, menu_path, parent):
         """Creates a tk menu object if it does not exist and adds it to the internal dictionary of menu objects
@@ -369,7 +382,7 @@ class WindowBase(Container):
         self._interval_callback = None
 
     def set_timeout(self, delay, callback):
-        """Execute the given callback function one time after delay milliseonds"""
+        """Execute the given callback function one time after delay milliseconds"""
         self._timeout = self._root.after(delay, callback)
 
     def clear_timeout(self):
@@ -385,6 +398,16 @@ class Window(WindowBase):
         Container.__init__(self, self._root)
         self.grid(padx=10, pady=10)
         self.hide()
+
+        ## testing ##
+        # When a window is closed with the [X], it is destroyed so cannot be opened again. It might be more intuitive
+        # for students to only have the window hidden so it can be reopened.
+        # this hides the window rather than closing it.
+        # self.on_close(lambda: self.hide())
+        # But if I set this here when it's instantiated, then it can be overridden, so I need
+
+        # The other problem here is that any on_close method needs to hide the window explicitly so this will need to
+        # be carefully documented.
 
     def show(self):
         self._root.deiconify()
@@ -437,5 +460,6 @@ class GooeyPieApp(WindowBase):
     def run(self):
         """Starts the application"""
         self._init_window()
-        self._set_default_icon()
+        if not self._icon:
+            self._set_default_icon()
         self.mainloop()

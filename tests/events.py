@@ -11,10 +11,7 @@ def log_event(event):
 def remove_listeners(event):
     for w in widgets:
         for e in w._events:
-            try:
-                w.remove_event_listener(e)
-            except:
-                print(f'Failed to remove {e} from {w}')
+            w.remove_event_listener(e)
 
 
 def enable_disable(event):

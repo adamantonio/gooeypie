@@ -74,6 +74,8 @@ class GooeyPieWidget:
         if not isinstance(container, (ttk.Frame, ttk.LabelFrame)):
             raise GooeyPieError(f'A widget can only be added to a GooeyPieApp, Window or container')
 
+        self._container = container
+
         # All events initially set to None
         self._events = {event_name: None for event_name in self._tk_event_mappings.keys()}
 
@@ -320,11 +322,24 @@ class GooeyPieWidget:
     def margin_left(self, value):
         self.margins[3] = value
 
+    def set_focus(self):
+        """Sets the focus to the widget"""
+
+        # If tkinter's focus() method is called during an event, it is ignored. This hackiness fixes that.
+        self.winfo_toplevel().after(0, self.focus)
+
 
 class Label(ttk.Label, GooeyPieWidget):
     def __init__(self, container, text):
         GooeyPieWidget.__init__(self, container)
         ttk.Label.__init__(self, container, text=text)
+
+        # mapping for alignment options
+        self._tk_settings = {
+            'left': 'w',
+            'center': 'center',
+            'right': 'e'
+        }
 
     def __str__(self):
         return f"<Label '{self.text}'>"
@@ -336,6 +351,23 @@ class Label(ttk.Label, GooeyPieWidget):
     @text.setter
     def text(self, content):
         self.configure(text=content)
+
+    @property
+    def align(self):
+        tk_setting = str(self.cget('anchor'))
+        if tk_setting == 'w':
+            return 'left'
+        elif tk_setting == 'e':
+            return 'right'
+        else:
+            return 'center'
+
+    @align.setter
+    def align(self, setting):
+        try:
+            self.configure(anchor=self._tk_settings[setting])
+        except KeyError:
+            raise ValueError(f"Value for align must be 'left', 'right' or 'center' (value given was {repr(setting)})")
 
     @property
     def justify(self):
@@ -422,7 +454,12 @@ class Slider(ttk.Scale, GooeyPieWidget):
 
 
 class StyleLabel(Label):
-    """Formatted label"""
+    """A StyleLabel can be customised with colours (foreground and background), fonts and size
+
+    Two helper functions exist in the main application object:
+      fonts() returns all fonts
+      font_available(name) returns True if name is installed on the current system
+    """
 
     def __init__(self, container, text):
         super().__init__(container, text)
@@ -457,25 +494,25 @@ class StyleLabel(Label):
         new_font[key] = value
         self._set_font(new_font)
 
-    def set_font(self, font, size, options=''):
-        # flatten the args
-        options = options.split(' ')
-        self.font_name = font
+    def set_font(self, font_name, size, options=''):
+        self.font_name = font_name
         self.font_size = size
-        for option in options:
-            if option == 'bold':
-                self.font_weight = 'bold'
-            elif option == 'italic':
-                self.font_style = 'italic'
-            elif option == 'underline':
-                self.underline = 'underline'
-            elif option == 'strikethrough':
-                self.strikethrough = 'strikethrough'
+        if options:
+            options = options.replace(',', '').split(' ')
+            # Check if the supplied options are valid
+            if not set(options).issubset({'bold', 'italic', 'underline', 'strikethrough'}):
+                raise ValueError(f"'{' '.join(options)}' is not a valid options string. Options can include "
+                                 f"'bold', 'italic', 'underline' or 'strikethrough'. ")
             else:
-                raise ValueError(f"Font options must be a string of options that can include 'bold', 'italic', 'underline' or 'strikethrough'. You said {options}")
+                self.font_weight = 'bold' if 'bold' in options else 'normal'
+                self.font_style = 'italic' if 'italic' in options else 'normal'
+                self.underline = 'underline' if 'underline' in options else 'normal'
+                self.strikethrough = 'strikethrough' if 'strikethrough' in options else 'normal'
 
     def clear_styles(self):
         self._style.configure(self._style_id, font=font.nametofont('TkDefaultFont'))
+        self.colour = 'default'
+        self.background_color = 'default'
 
     @property
     def font_name(self):
@@ -598,19 +635,19 @@ class StyleLabel(Label):
     background_color = background_colour
 
     # Helper function
-    def elements_available(self):
+    def _elements_available(self):
         # Get widget elements
         style = self._style
         layout = str(style.layout('custom.TLabel'))
         print('Stylename = {}'.format('custom.TLabel'))
         print('Layout    = {}'.format(layout))
-        elements=[]
+        elements = []
         for n, x in enumerate(layout):
-            if x=='(':
-                element=""
+            if x == '(':
+                element = ""
                 for y in layout[n+2:]:
                     if y != ',':
-                        element=element+str(y)
+                        element += str(y)
                     else:
                         elements.append(element[:-1])
                         break
@@ -618,8 +655,7 @@ class StyleLabel(Label):
 
         # Get options of widget elements
         for element in elements:
-            print('{0:30} options: {1}'.format(
-                element, style.element_options(element)))
+            print('{0:30} options: {1}'.format(element, style.element_options(element)))
 
 
 class Hyperlink(StyleLabel):
@@ -630,13 +666,15 @@ class Hyperlink(StyleLabel):
         self.underline = 'underline'
         self.bind('<Enter>', lambda e: self.configure(cursor='hand2'))
         self.bind('<Button-1>', self._open_link)
+        self.configure(takefocus=True)  # Labels don't normally take focus when tabbing
 
     def __str__(self):
         return f"<Hyperlink '{self.text}'>"
 
     def _open_link(self, e):
-        import webbrowser
-        webbrowser.open(self.url)
+        if not self.disabled:
+            import webbrowser
+            webbrowser.open(self.url)
 
 
 class Image(Label):
@@ -674,12 +712,11 @@ class Input(ttk.Entry, GooeyPieWidget):
         GooeyPieWidget.__init__(self, container)
         self._value = tk.StringVar()
         ttk.Entry.__init__(self, container, textvariable=self._value)
-        self.secret = False
         self._events['change'] = None
         self._observer = None  # Used in tkinter's trace method, for the 'change' event
 
     def __str__(self):
-        return f"""<Input object>"""
+        return f"""<Input widget>"""
 
     @property
     def width(self):
@@ -687,6 +724,8 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     @width.setter
     def width(self, value):
+        if type(value) != int or int(value) < 1:
+            raise ValueError('Width must be a positive integer')
         self.configure(width=value)
 
     @property
@@ -699,7 +738,8 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     @property
     def secret(self):
-        return self.secret
+        # 'show' will be the empty string if secret is not set
+        return self.cget('show')
 
     @secret.setter
     def secret(self, value):
@@ -716,7 +756,9 @@ class Input(ttk.Entry, GooeyPieWidget):
     def justify(self, value):
         self.configure(justify=value)
 
-    # todo: select method that selects all text
+    def select(self):
+        self.focus()
+        self.select_range(0, tk.END)
 
 
 class Secret(Input):
@@ -725,7 +767,7 @@ class Secret(Input):
         self.configure(show='●')
 
     def __str__(self):
-        return f"""<Secret object>"""
+        return f"""<Secret widget>"""
 
     def unmask(self):
         self.configure(show='')
@@ -1175,6 +1217,7 @@ class ImageButton(Button):
         else:
             self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
 
+        self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
         self.configure(image=self._tk_image, compound='left' if text else 'image')
 
     def __str__(self):

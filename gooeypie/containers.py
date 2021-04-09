@@ -37,6 +37,19 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
 
     @property
+    def height(self):
+        return self.cget('height')
+
+    @height.setter
+    def height(self, value):
+        if type(value) != int or value < 0:
+            raise ValueError(f'Height must be a positive integer')
+        self.config(height=value)
+        self.grid_propagate(False)
+
+    # TODO: add property for width, check for type properly, try to avoid widths that are too small
+
+    @property
     def margin_top(self):
         return self.margins[0]
 
@@ -67,7 +80,6 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
     @margin_left.setter
     def margin_left(self, value):
         self.margins[3] = value
-
 
     def set_grid(self, rows, columns):
         """
