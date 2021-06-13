@@ -340,6 +340,13 @@ class Label(ttk.Label, GooeyPieWidget):
             'center': 'center',
             'right': 'e'
         }
+        # Need to add style information here to be able to lookup for wrapping
+        # Also used more extensively in the child class StyleLabel to add formatting
+        self._style = ttk.Style()
+        self._style_id = f'{str(id(self))}.TLabel'  # Need a custom id for each instance
+        self.configure(style=self._style_id)
+
+        self._wrap = False
 
     def __str__(self):
         return f"<Label '{self.text}'>"
@@ -371,12 +378,60 @@ class Label(ttk.Label, GooeyPieWidget):
 
     @property
     def justify(self):
+        """Returns the justify property - 'left', 'center' or 'right'"""
         return self.cget('justify')
 
     @justify.setter
     def justify(self, value):
-        """If the label contains newline characters, set to 'left', 'center' or 'right to justify the text."""
+        """If the label contains newline characters, set to 'left', 'center' or 'right' to justify the text."""
         self.configure(justify=value)
+
+    @property
+    def width(self):
+        """If a width has been set, returns the width of the label, otherwise returns the empty string"""
+        return self.cget('width')
+
+    @width.setter
+    def width(self, value):
+        """Set the width of the label in characters.
+        If the label is longer than the given width, it will be truncated
+        If the label is shorter than the given width, extra space will be allocated
+        """
+        self.configure(width=value)
+
+    @property
+    def wrap(self):
+        """Returns a boolean to indicate whether label text longer than its set width will wrap onto other lines"""
+        return self._wrap
+
+    @wrap.setter
+    def wrap(self, value):
+        """Sets whether label text that extends beyond its width is truncated (wrap = False) or continued
+        on to the next line (wrap = True)
+
+        Notes:
+            + If the label has no width set, setting the wrap property has no effect
+            + If wrap is dynamically changed during the execution of the program, the label will
+              not resize vertically as needed.
+        """
+        self._wrap = bool(value)
+        if self._wrap:
+            # Setting wrap has no effect if the width of the label has not been set
+            if self.width:
+                # self.wrap_width = self.width
+                self.configure(wraplength=self._pixels_per_character() * self.width)
+        else:
+            self._wrap = False
+            self.configure(wraplength='')
+
+    def _pixels_per_character(self):
+        """Estimates the width of each character in pixels by naively calculating the length of
+        all ASCII characters in the label
+        """
+        from string import ascii_letters
+        fudge_factor = 0.91  # value found through trial and error to get a more accurate measure
+        f = font.Font(font=self._style.lookup(self._style_id, 'font'))
+        return f.measure(ascii_letters) / len(ascii_letters) * fudge_factor
 
 
 class Button(ttk.Button, GooeyPieWidget):
@@ -463,9 +518,6 @@ class StyleLabel(Label):
 
     def __init__(self, container, text):
         super().__init__(container, text)
-        self._style = ttk.Style()
-        self._style_id = f'{str(id(self))}.TLabel'  # Need a custom id for each instance
-        self.configure(style=self._style_id)
 
     def __str__(self):
         return f"<StyleLabel '{self.text}'>"
