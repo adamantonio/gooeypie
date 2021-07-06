@@ -132,7 +132,7 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
             if row + (row_span - 1) == len(self._grid):
                 pady[1] *= 2
 
-            # For a container, set the padding on the edges to 0 or the contents will
+            # For a Container, set the padding on the edges to 0 or the contents will
             # appear inset compared to other widgets in the window
             # override_spacing is an ugly hacky solution so that radiobuttons don't inset in their Container
             if type(self) == Container:
@@ -146,7 +146,7 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
                 if row + (row_span - 1) == len(self._grid):
                     pady[1] = 0
 
-            # Margins can be overridden - currently used internally by radiogroups
+            # Margins can be overridden - currently used internally by RadioGroup
             # margin = [top, right, bottom, left]
             margins = kwargs.get('margins') or widget.margins
             if margins:
@@ -164,7 +164,7 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
                         row=row-1, column=column-1, columnspan=column_span, rowspan=row_span)
 
         except ValueError:
-            raise Exception('The set_grid(rows, columns) function must be called before adding widgets')
+            raise GooeyPieError('The set_grid(rows, columns) function must be called before adding widgets')
 
         except IndexError:
             raise Exception(f'Row {row}, Column {column} is outside the bounds of the defined grid '
@@ -198,16 +198,16 @@ class Container(ContainerBase):
     def __init__(self, master):
         ContainerBase.__init__(self, master)
 
-        # if DEBUG:
-        #     import random
-        #     rand_style = f'MyStyle{random.randrange(100, 999)}.TFrame'
-        #     bg_col = random.choice(('red', 'blue', 'green', 'grey', 'orange'))
-        #     s = ttk.Style()
-        #     s.configure(rand_style, background=bg_col)
-        #     print(f'Container is {bg_col}')
-        #     ttk.Frame.__init__(self, master, style=rand_style)
-        # else:
-        #     ttk.Frame.__init__(self, master)
+        if DEBUG:
+            import random
+            rand_style = f'MyStyle{random.randrange(100, 999)}.TFrame'
+            bg_col = random.choice(('red', 'blue', 'green', 'grey', 'orange'))
+            s = ttk.Style()
+            s.configure(rand_style, background=bg_col)
+            print(f'Container is {bg_col}')
+            ttk.Frame.__init__(self, master, style=rand_style)
+        else:
+            ttk.Frame.__init__(self, master)
 
 
 class LabelContainer(ContainerBase):
@@ -215,13 +215,13 @@ class LabelContainer(ContainerBase):
     def __init__(self, master, text):
         ContainerBase.__init__(self, master, text)
 
-        # if DEBUG:
-        #     import random
-        #     rand_style = f'MyStyle{random.randrange(100, 999)}.TFrame'
-        #     bg_col = random.choice(('red', 'blue', 'green', 'grey', 'orange'))
-        #     s = ttk.Style()
-        #     s.configure(rand_style, background=bg_col)
-        #     print(f'LabelContainer is {bg_col}')
-        #     ttk.LabelFrame.__init__(self, master, text=text, style=rand_style)
-        # else:
-        #     ttk.LabelFrame.__init__(self, master, text=text)
+        if DEBUG:
+            import random
+            rand_style = f'MyStyle{random.randrange(100, 999)}.TFrame'
+            bg_col = random.choice(('red', 'blue', 'green', 'grey', 'orange'))
+            s = ttk.Style()
+            s.configure(rand_style, background=bg_col)
+            print(f'LabelContainer is {bg_col}')
+            ttk.LabelFrame.__init__(self, master, text=text, style=rand_style)
+        else:
+            ttk.LabelFrame.__init__(self, master, text=text)

@@ -29,6 +29,7 @@ def justify(event):
 def add_words(event):
     test_lbl.wrap = not test_lbl.wrap
 
+
 # DEFINE CONTAINERS #
 
 # Main label containers

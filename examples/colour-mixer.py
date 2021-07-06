@@ -2,15 +2,13 @@ import gooeypie as gp
 
 
 def change_colour(event):
-    # Convert each numbers from 0 to 255 to a 2-digit hex code
-    print(type(red_value.value))
-    rr = str(hex(int(red_value.value)))[2:].rjust(2, '0')
-    gg = str(hex(int(green_value.value)))[2:].rjust(2, '0')
-    bb = str(hex(int(blue_value.value)))[2:].rjust(2, '0')
+    # Convert each number value from 0 to 255 to a 2-digit hex code
+    rr = str(hex(red_value.value))[2:].rjust(2, '0')
+    gg = str(hex(green_value.value))[2:].rjust(2, '0')
+    bb = str(hex(blue_value.value))[2:].rjust(2, '0')
+
     # Set the background colour
     colour.background_colour = f'#{rr}{gg}{bb}'
-    # print(f'#{rr}{gg}{bb}')
-    # colour.text = 'boooooooooooooo'
 
 
 app = gp.GooeyPieApp('Colour Mixer')
@@ -23,15 +21,14 @@ red_value = gp.Number(app, 0, 255, 5)
 green_value = gp.Number(app, 0, 255, 5)
 blue_value = gp.Number(app, 0, 255, 5)
 
-# loop though the Number widgets,
+# loop though the Number widgets, setting relevant options
 for number in (red_value, green_value, blue_value):
     number.add_event_listener('change', change_colour)
     number.wrap = False
     number.margin_top = 0
 
-lines = '\n\n\n\n\n'
-
-colour = gp.StyleLabel(app, lines)
+# Empty style label to display the colour
+colour = gp.StyleLabel(app, '\n\n\n\n\n')
 colour.background_colour = 'black'
 
 app.set_grid(3, 3)

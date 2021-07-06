@@ -4,7 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
-from gooeypie.containers import *   # Used for the ScrolledListbox & Radiogroup widgets
+from .containers import *   # Used for the ScrolledListbox & Radiogroup widgets
 
 import platform
 
@@ -23,10 +23,11 @@ except ImportError:
 
 class GooeyPieEvent:
     """Event objects are passed to callback functions"""
-    def __init__(self, event_name, gooeypie_widget, tk_event=None):
+    def __init__(self, event_name, gooeypie_widget, tk_event=None, menu=None):
         """Creates a GooeyPie event object, passed to all callback functions"""
         self.event_name = event_name
         self.widget = gooeypie_widget
+
         if tk_event:
             # All tk events report mouse position
             self.mouse = {
@@ -37,17 +38,30 @@ class GooeyPieEvent:
             }
 
             # Mouse events set character information to the string '??'. Set to None in this case.
+            # https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/key-names.html
             if tk_event.char == '??':
                 self.key = None
             else:
                 self.key = {
-                    'char': tk_event.char,
-                    'keysym': tk_event.keysym,
-                    'keycode': tk_event.keycode
+                    'key_code': tk_event.char,  # single character representing the key
+                    'name': tk_event.keysym,    # a string representing the key pressed
+                    'code': tk_event.keycode    # ASCII code
                 }
         else:
             self.mouse = None
             self.key = None
+
+        # The menu path if a menu event was triggered
+        self.menu = menu
+
+    def __repr__(self):
+        return str({
+            'event_name': self.event_name,
+            'widget': self.widget,
+            'mouse': self.mouse,
+            'key': self.key,
+            'menu': self.menu
+        })
 
 
 class GooeyPieWidget:
@@ -67,6 +81,9 @@ class GooeyPieWidget:
         'focus': '<FocusIn>',
         'blur': '<FocusOut>'
     }
+
+    # def __repr__(self):
+    #     return f"<GooeyPieApp '{self.title}'"
 
     def __init__(self, container=None):
         # Check that the container is valid
@@ -135,7 +152,11 @@ class GooeyPieWidget:
         self._events[event_name] = callback
 
         if event_name in self._tk_event_mappings:
-            self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+            if isinstance(self, ScrolledListbox):
+                # Bind the event to the listbox part of the ScrolledListbox
+                self._listbox.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+            else:
+                self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
         if event_name == 'change':
             if isinstance(self, RadiogroupBase):
@@ -192,7 +213,10 @@ class GooeyPieWidget:
 
         if event_name in self._tk_event_mappings:
             # Unbind standard events like mouse_down, right_click etc
-            if not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
+            if isinstance(self, ScrolledListbox):
+                # Unbind the event to the listbox part of the ScrolledListbox
+                self._listbox.unbind(self._tk_event_mappings[event_name])
+            elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
                 # Go ahead and unbind unless they we're trying to break the hyperlink
                 self.unbind(self._tk_event_mappings[event_name])
 
@@ -812,6 +836,9 @@ class Input(ttk.Entry, GooeyPieWidget):
         self.focus()
         self.select_range(0, tk.END)
 
+    def clear(self):
+        self.text = ''
+
 
 class Secret(Input):
     def __init__(self, container):
@@ -938,6 +965,28 @@ class Listbox(tk.Listbox, GooeyPieWidget):
             return [self.get(0, 'end')[index] for index in select]
         else:
             return self.get(0, 'end')[select[0]]
+
+    @selected.setter
+    def selected(self, text):
+        """Sets the value at the current selection to text
+        Raises an error if multiple items are selected
+        """
+        select = self.curselection()
+        if len(select) > 1:
+            raise ValueError('Cannot set value when multiple items in the listbox are selected')
+        if len(select) == 0:
+            raise ValueError('Cannot set value: no item selected in the listbox')
+
+        # if multiple selection is enabled, the selected index is in a list
+        if self.multiple_selection:
+            selected_index = self.selected_index[0]
+        else:
+            selected_index = self.selected_index
+
+        # change the selected item
+        updated_items = self.items
+        updated_items[selected_index] = text
+        self.items = updated_items
 
     def select_none(self):
         """Deselects any items that may be selected in the listbox"""
@@ -1120,6 +1169,14 @@ class ScrolledListbox(Container, GooeyPieWidget):
         Returns a list of items if multiple selections are enabled.
         """
         return self._listbox.selected
+
+    @selected.setter
+    def selected(self, text):
+        """Sets the selected item to the given text
+        Raises an error if multiple items are currently selected
+        Raises an error if no items are currently selected
+        """
+        self._listbox.selected = text
 
     @property
     def selected_index(self):

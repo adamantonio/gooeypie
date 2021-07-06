@@ -4,7 +4,10 @@ import time
 
 def log_event(event):
     now = time.strftime('%H:%M:%S', time.localtime())
-    event_string = f'{now}\t{event.event_name} on {event.widget}'
+    if event.event_name == 'key_press':
+        event_string = f'{now}\t{event.key}'
+    else:
+        event_string = f'{now}\t{event.event_name} on {event.widget}'
     log.prepend(f'{event_string}\n')
 
 

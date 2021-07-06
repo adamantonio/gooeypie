@@ -1,6 +1,6 @@
-from gooeypie.widgets import *
-from gooeypie.containers import *
-from gooeypie.error import *
+from .widgets import *
+from .containers import *
+from .error import *
 from tkinter import messagebox
 
 
@@ -13,7 +13,7 @@ class WindowBase(Container):
         self._root = root   # for the class GooeyPieApp, this is the tkinter.Tk() instance
         self._root.title(title)  # title of the window
 
-        Container.__init__(self, self._root)
+        Container.__init__(self, root)
 
         self._menubar = tk.Menu(root)
         self._menu = {}  # internal dictionary for menu objects
@@ -23,11 +23,12 @@ class WindowBase(Container):
         self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
         self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
         self._icon = None  # Window icon
+        self._on_close_callback = None  # Function called when window is closed
 
         self.storage = {}  # Global storage variable
 
     def _init_window(self):
-        """Sets up the window with the users """
+        """Sets up the window with the users size preferences and menus"""
 
         # Add the menu bar to the window if there is one
         if self._menu:
@@ -48,15 +49,13 @@ class WindowBase(Container):
         height = max(self._preferred_size[1], min_height)
         self._root.geometry(f'{width}x{height}')
 
-        # Maximise the space occupied by the main frame - row/column configure needs to be called on
-        # the root window and the main frame
-        # self._root.columnconfigure(0, weight=1)
-        # self._root.rowconfigure(0, weight=1)
-        # self.columnconfigure(0, weight=1)
-        # self.rowconfigure(0, weight=1)
+    @property
+    def title(self):
+        return self._root.title()
 
-    def set_title(self, title):
-        self._root.title(title)
+    @title.setter
+    def title(self, text):
+        self._root.title(text)
 
     def set_size(self, width, height):
         self._preferred_size = [width, height]
@@ -64,7 +63,6 @@ class WindowBase(Container):
     def set_icon(self, image_file):
         self._icon = image_file
         self._root.iconbitmap(image_file)
-        # print('we tried')
 
     @property
     def width(self):
@@ -138,10 +136,8 @@ class WindowBase(Container):
         GooeyPie only supports one level of nesting (menu or sub menu)
         """
 
-        # Refactor - first arg is menu 'type', this means we can call this fct from add menu radios
         self._menu[menu_path].add_command(label=item)
 
-        # TODO: this could go out to another fct for the radio group option - _set_menu_callback
         # Add callback function to item
         if callback is not None:
             current = self._menu[menu_path].index('end')
@@ -159,7 +155,8 @@ class WindowBase(Container):
                 item_path = (menu_path, item)
             else:
                 item_path = menu_path + (item,)
-            self._menu[menu_path].entryconfigure(current, command=partial(callback, item_path))
+            # self._menu[menu_path].entryconfigure(current, command=partial(callback, item_path))
+            self._menu[menu_path].entryconfigure(current, command=partial(self._menu_select_callback, item_path, callback))
 
     def _create_menu_radios(self, menu_path, options, callback):
         """Creates a group of radio button menu items in either a top level menu or a submenu"""
@@ -186,17 +183,27 @@ class WindowBase(Container):
             for option in options:
                 self._menu[menu_path].add_radiobutton(label=option, variable=self._menu_tkcontrols[control_var_key])
 
+    def _menu_select_callback(self, menu_path, callback):
+        """Handles callbacks for regular menu items"""
+        event = GooeyPieEvent('menu', self, menu=menu_path)
+        callback(event)
+
     def _menu_radio_select_callback(self, menu_path, control_var, callback):
-        """Intermediary callback for menu radio items"""
+        """Handles callbacks for menu radio items"""
         selected_option = self._menu_tkcontrols[control_var].get()
         if type(menu_path) == str:
             # If the radio item is in a top level menu - e.g. ('Font', 'Bold')
-            callback((menu_path, selected_option))
+            menu_str = (menu_path, selected_option)
+            # callback((menu_path, selected_option))
         else:
             # If the radio item is in a submenu - e.g. ('Format', 'Font', 'Bold')
-            callback((menu_path[0], menu_path[1], selected_option))
+            menu_str = (menu_path[0], menu_path[1], selected_option)
+            # callback((menu_path[0], menu_path[1], selected_option))
 
-    def _create_menu_checkbutton(self, menu_path, item, callback, state=True):
+        event = GooeyPieEvent('menu', self, menu=menu_str)
+        callback(event)
+
+    def _create_menu_checkbutton(self, menu_path, item, callback, state):
         """Adds a checkbutton menu item"""
 
         # The item_path, eg ("File", "Open") or ("Edit", "Copy", "Formatting"), used for the callback and control var
@@ -210,7 +217,7 @@ class WindowBase(Container):
 
         if callback is not None:
             assert callback.__code__.co_argcount == 1
-            self._menu[menu_path].entryconfigure(self._menu[menu_path].index('end'), command=partial(callback, item_path))
+            self._menu[menu_path].entryconfigure(self._menu[menu_path].index('end'), command=partial(self._menu_select_callback, item_path, callback))
 
     def _change_menu_state(self, menu_path, item, state):
         """Change
@@ -255,14 +262,14 @@ class WindowBase(Container):
         self._create_menu((menu, submenu), self._menu[menu])
         self._create_menu_radios((menu, submenu), options, callback)
 
-    def add_menu_checkbutton(self, menu, item, callback):
+    def add_menu_checkbox(self, menu, item, callback, checked=False):
         self._create_menu(menu, self._menubar)
-        self._create_menu_checkbutton(menu, item, callback)
+        self._create_menu_checkbutton(menu, item, callback, checked)
 
-    def add_submenu_checkbutton(self, menu, submenu, item, callback):
+    def add_submenu_checkbox(self, menu, submenu, item, callback, checked=False):
         self._create_menu(menu, self._menubar)
         self._create_menu((menu, submenu), self._menu[menu])
-        self._create_menu_checkbutton((menu, submenu), item, callback)
+        self._create_menu_checkbutton((menu, submenu), item, callback, checked)
 
     def add_menu_separator(self, *path):
         """Adds a separator to the given path"""
@@ -308,19 +315,19 @@ class WindowBase(Container):
         control_var_key = (menu, submenu) + tuple(options)
         return self._menu_tkcontrols[control_var_key].get()
 
-    def get_menu_checkbutton(self, menu, item):
+    def get_menu_checkbox(self, menu, item):
         """Returns the state of the menu checkbutton"""
         return self._menu_tkcontrols[(menu, item)].get()
 
-    def set_menu_checkbutton(self, menu, item, state):
+    def set_menu_checkbox(self, menu, item, state):
         """Sets the state of the menu checkbutton"""
         self._menu_tkcontrols[(menu, item)].set(state)
 
-    def get_submenu_checkbutton(self, menu, submenu, item):
+    def get_submenu_checkbox(self, menu, submenu, item):
         """Returns the state of the menu checkbutton"""
         return self._menu_tkcontrols[(menu, submenu, item)].get()
 
-    def set_submenu_checkbutton(self, menu, submenu, item, state):
+    def set_submenu_checkbox(self, menu, submenu, item, state):
         """Sets the state of the menu checkbutton"""
         self._menu_tkcontrols[(menu, submenu, item)].set(state)
 
@@ -395,31 +402,47 @@ class Window(WindowBase):
     """An additional window"""
     def __init__(self, app, title):
         WindowBase.__init__(self, tk.Toplevel(app), title)
-        Container.__init__(self, self._root)
-        self.grid(padx=10, pady=10)
+        # Container.__init__(self, self._root)
+        # self.grid(padx=10, pady=10)
+        self._initialised = False
         self.hide()
 
         ## testing ##
         # When a window is closed with the [X], it is destroyed so cannot be opened again. It might be more intuitive
         # for students to only have the window hidden so it can be reopened.
         # this hides the window rather than closing it.
-        # self.on_close(lambda: self.hide())
+        # self.on_close(self.hide)
         # But if I set this here when it's instantiated, then it can be overridden, so I need
 
         # The other problem here is that any on_close method needs to hide the window explicitly so this will need to
         # be carefully documented.
 
+    def __str__(self):
+        return f"<Window '{self.title}'>"
+
     def show(self):
         self._root.deiconify()
         self._root.grab_release()
+
+        if not self._initialised:
+            self._initialised = True
+            self._init_window()
 
     def show_on_top(self):
         self._root.deiconify()
         self._root.grab_set()
 
+        if not self._initialised:
+            self._initialised = True
+            self._init_window()
+
     def hide(self):
         self._root.withdraw()
         self._root.grab_release()
+
+    def on_close(self, callback):
+        """Registers a function to be called when the window is closed"""
+        self._root.protocol("WM_DELETE_WINDOW", callback)
 
 
 class GooeyPieApp(WindowBase):
@@ -428,6 +451,9 @@ class GooeyPieApp(WindowBase):
         WindowBase.__init__(self, tk.Tk(), title)
         if DEBUG:
             self._root.configure(background='black')
+
+    def __str__(self):
+        return f"<GooeyPieApp '{self.title}'>"
 
     def _set_default_icon(self):
         try:
