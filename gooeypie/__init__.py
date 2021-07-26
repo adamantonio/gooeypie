@@ -23,7 +23,10 @@ class WindowBase(Container):
         self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
         self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
         self._icon = None  # Window icon
+
         self._on_close_callback = None  # Function called when window is closed
+        self._default_close = self._root.destroy
+        self._root.protocol("WM_DELETE_WINDOW", self._handle_window_close)
 
         self.storage = {}  # Global storage variable
 
@@ -48,6 +51,16 @@ class WindowBase(Container):
         width = max(self._preferred_size[0], min_width)
         height = max(self._preferred_size[1], min_height)
         self._root.geometry(f'{width}x{height}')
+
+    def _handle_window_close(self):
+        """Called whenever a window is closed with the [X] or associated keyboard shortcut"""
+        if self._on_close_callback is None:
+            confirm_exit = True
+        else:
+            confirm_exit = self._on_close_callback()
+
+        if confirm_exit:
+            self._default_close()
 
     @property
     def title(self):
@@ -103,15 +116,6 @@ class WindowBase(Container):
     def resizable(self, resize):
         """Determines whether the user can change the size of the window"""
         pass
-
-    def font_available(self, font_name):
-        """Returns true if font_name is installed on the system, case-insensitive"""
-        # TODO: check if MacOS cares about case for font names
-        return font_name.lower() in [f.lower() for f in self.fonts()]
-
-    def fonts(self):
-        """Returns a list of all system fonts"""
-        return list(font.families(self))
 
     def _create_menu(self, menu_path, parent):
         """Creates a tk menu object if it does not exist and adds it to the internal dictionary of menu objects
@@ -333,22 +337,23 @@ class WindowBase(Container):
 
     def on_close(self, callback):
         """Registers a function to be called when the window is closed"""
-        # TODO: test this, add an exit() or destroy() fct
-        self._root.protocol("WM_DELETE_WINDOW", callback)
+        if not callable(callback):
+            raise GooeyPieError('The argument to the on_close method must be the name of a function')
+        self._on_close_callback = callback
 
     # Work all this stuff out - https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/tkMessageBox.html
     def ask_ok_cancel(self, title, message):
-        return messagebox.askokcancel(title, message, parent=self, icon='info', default='cancel')
+        return messagebox.askokcancel(title, message, parent=self._root, icon='info', default='cancel')
 
     # Dialogs that have a single 'OK' button
     def info_dialog(self, title, message):
-        messagebox.showinfo(title, message, parent=self, icon='info')
+        messagebox.showinfo(title, message, parent=self._root, icon='info')
 
     def warning_dialog(self, title, message):
-        messagebox.showwarning(title, message, parent=self, icon='warning')
+        messagebox.showwarning(title, message, parent=self._root, icon='warning')
 
     def error_dialog(self, title, message):
-        messagebox.showerror(title, message, parent=self, icon='error')
+        messagebox.showerror(title, message, parent=self._root, icon='error')
 
     # Dialogs that return a value
     def info_question(self, title, message, buttons='okcancel'):
@@ -402,9 +407,8 @@ class Window(WindowBase):
     """An additional window"""
     def __init__(self, app, title):
         WindowBase.__init__(self, tk.Toplevel(app), title)
-        # Container.__init__(self, self._root)
-        # self.grid(padx=10, pady=10)
         self._initialised = False
+        self._default_close = self.hide
         self.hide()
 
         ## testing ##
@@ -423,7 +427,6 @@ class Window(WindowBase):
     def show(self):
         self._root.deiconify()
         self._root.grab_release()
-
         if not self._initialised:
             self._initialised = True
             self._init_window()
@@ -431,7 +434,6 @@ class Window(WindowBase):
     def show_on_top(self):
         self._root.deiconify()
         self._root.grab_set()
-
         if not self._initialised:
             self._initialised = True
             self._init_window()
@@ -440,17 +442,15 @@ class Window(WindowBase):
         self._root.withdraw()
         self._root.grab_release()
 
-    def on_close(self, callback):
-        """Registers a function to be called when the window is closed"""
-        self._root.protocol("WM_DELETE_WINDOW", callback)
+    # def on_close(self, callback):
+    #     """Registers a function to be called when the window is closed"""
+    #     self._root.protocol("WM_DELETE_WINDOW", callback)
 
 
 class GooeyPieApp(WindowBase):
     """The main application window"""
     def __init__(self, title):
         WindowBase.__init__(self, tk.Tk(), title)
-        if DEBUG:
-            self._root.configure(background='black')
 
     def __str__(self):
         return f"<GooeyPieApp '{self.title}'>"
@@ -469,16 +469,14 @@ class GooeyPieApp(WindowBase):
         self.clipboard_append(text)
         self.update()  # now it stays on the clipboard after the window is closed
 
-    # @staticmethod
-    # def ask_yes_no(self, title, message):
-    #     return messagebox.askyesno(title, message)
-    #
-    # @staticmethod
-    # def ask_retry_cancel(self, title, message):
-    #     return messagebox.askretrycancel(title, message)
-    #
-    # @staticmethod
-    # def alert_error(self, title, message):
+    def font_available(self, font_name):
+        """Returns true if font_name is installed on the system, case-insensitive"""
+        # TODO: check if MacOS cares about case for font names
+        return font_name.lower() in [f.lower() for f in self.fonts()]
+
+    def fonts(self):
+        """Returns a list of all system fonts"""
+        return list(font.families(self))
 
     def exit(self):
         self._root.destroy()
