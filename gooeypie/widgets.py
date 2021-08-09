@@ -1514,15 +1514,29 @@ class OldLabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
 
 
 class Dropdown(ttk.Combobox, GooeyPieWidget):
-    def __init__(self, container, choices):
+    def __init__(self, container, items):
         GooeyPieWidget.__init__(self, container)
-        ttk.Combobox.__init__(self, container, values=choices, exportselection=0)
+        ttk.Combobox.__init__(self, container, values=items, exportselection=0)
         self.state(['readonly'])
         self._events['select'] = None
-        self.choices = choices
+
+        # DONE TODO 1: change choices to items
+        # DONE TODO 2: need to write getters and setters for choices - at the moment nothing actually changes...
+        # TODO 3: update docs
+        # TODO 4: write a better testing widget
 
     def __str__(self):
         return f'<Dropdown {tuple(self.choices)}>'
+
+    @property
+    def items(self):
+        """Returns a COPY of the items in the Dropdown"""
+        return self.cget('values')
+
+    @items.setter
+    def items(self, items_):
+        """Sets the contents of the Dropdown"""
+        self.configure(values=items_)
 
     @property
     def selected(self):

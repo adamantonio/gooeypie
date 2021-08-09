@@ -18,14 +18,14 @@ class WindowBase(Container):
         self._menubar = tk.Menu(root)
         self._menu = {}  # internal dictionary for menu objects
         self._menu_tkcontrols = {}  # internal dictionary of tk control variables for menu radio buttons and check
-        self._preferred_size = [0, 0]  # users preferred size (may be larger to fit in all apps)
+        self._preferred_size = [0, 0]  # users preferred size (actual size may be larger to fit in all widgets)
 
         self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
         self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
         self._icon = None  # Window icon
 
         self._on_close_callback = None  # Function called when window is closed
-        self._default_close = self._root.destroy
+        self._default_close = self._root.destroy  # Default destroy for apps, overridden to hide() for windows
         self._root.protocol("WM_DELETE_WINDOW", self._handle_window_close)
 
         self.storage = {}  # Global storage variable
@@ -341,37 +341,38 @@ class WindowBase(Container):
             raise GooeyPieError('The argument to the on_close method must be the name of a function')
         self._on_close_callback = callback
 
-    # Work all this stuff out - https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/tkMessageBox.html
-    def ask_ok_cancel(self, title, message):
-        return messagebox.askokcancel(title, message, parent=self._root, icon='info', default='cancel')
+    def alert(self, title, message, icon):
+        """Alerts have a single 'OK' button and do not return a value"""
+        if icon == 'error':
+            messagebox.showerror(title, message, parent=self._root, icon='error')
+        elif icon == 'warning':
+            messagebox.showwarning(title, message, parent=self._root, icon='warning')
+        elif icon == 'question':
+            messagebox.showinfo(title, message, parent=self._root, icon='question')
+        else:
+            messagebox.showinfo(title, message, parent=self._root, icon='info')
 
-    # Dialogs that have a single 'OK' button
-    def info_dialog(self, title, message):
-        messagebox.showinfo(title, message, parent=self._root, icon='info')
+    # Confirmation dialogs return a value
+    @staticmethod
+    def _check_icon(icon):
+        if icon not in ('info', 'question', 'warning', 'error'):
+            raise GooeyPieError("The icon for the confirm popup must be one of 'info', 'question', 'warning' or 'error'")
 
-    def warning_dialog(self, title, message):
-        messagebox.showwarning(title, message, parent=self._root, icon='warning')
+    def confirm_okcancel(self, title, message, icon):
+        self._check_icon(icon)
+        return messagebox.askokcancel(title, message, parent=self._root, icon=icon)
 
-    def error_dialog(self, title, message):
-        messagebox.showerror(title, message, parent=self._root, icon='error')
+    def confirm_yesno(self, title, message, icon):
+        self._check_icon(icon)
+        return messagebox.askyesno(title, message, parent=self._root, icon=icon)
 
-    # Dialogs that return a value
-    def info_question(self, title, message, buttons='okcancel'):
-        """NOT YET IMPLEMENTED"""
-        pass
+    def confirm_retrycancel(self, title, message, icon):
+        self._check_icon(icon)
+        return messagebox.askretrycancel(title, message, parent=self._root, icon=icon)
 
-    def question_question(self, title, message, buttons='okcancel'):
-        # well this is a silly function name
-        """NOT YET IMPLEMENTED"""
-        pass
-
-    def warning_question(self, title, message, buttons='okcancel'):
-        """NOT YET IMPLEMENTED"""
-        pass
-
-    def error_question(self, title, message, buttons='okcancel'):
-        """NOT YET IMPLEMENTED"""
-        pass
+    def confirm_yesnocancel(self, title, message, icon):
+        self._check_icon(icon)
+        return messagebox.askyesnocancel(title, message, parent=self._root, icon=icon)
 
     def _trigger_interval_callback(self):
         """Calls the callback function associated with set_interval and sets up the next call"""
@@ -408,7 +409,7 @@ class Window(WindowBase):
     def __init__(self, app, title):
         WindowBase.__init__(self, tk.Toplevel(app), title)
         self._initialised = False
-        self._default_close = self.hide
+        self._default_close = self.hide  # By default, additional windows are hidden
         self.hide()
 
         ## testing ##
@@ -441,10 +442,6 @@ class Window(WindowBase):
     def hide(self):
         self._root.withdraw()
         self._root.grab_release()
-
-    # def on_close(self, callback):
-    #     """Registers a function to be called when the window is closed"""
-    #     self._root.protocol("WM_DELETE_WINDOW", callback)
 
 
 class GooeyPieApp(WindowBase):
