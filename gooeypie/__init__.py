@@ -468,7 +468,6 @@ class GooeyPieApp(WindowBase):
 
     def font_available(self, font_name):
         """Returns true if font_name is installed on the system, case-insensitive"""
-        # TODO: check if MacOS cares about case for font names
         return font_name.lower() in [f.lower() for f in self.fonts()]
 
     def fonts(self):

@@ -4,7 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
-from .containers import *   # Used for the ScrolledListbox & Radiogroup widgets
+from .containers import *   # Used for the Listbox & Radiogroup widgets
 
 import platform
 
@@ -45,7 +45,7 @@ class GooeyPieEvent:
                 self.key = {
                     'key_code': tk_event.char,  # single character representing the key
                     'name': tk_event.keysym,    # a string representing the key pressed
-                    'code': tk_event.keycode    # ASCII code
+                    'code': tk_event.keycode    # numerical keycode
                 }
         else:
             self.mouse = None
@@ -152,7 +152,7 @@ class GooeyPieWidget:
         self._events[event_name] = callback
 
         if event_name in self._tk_event_mappings:
-            if isinstance(self, ScrolledListbox):
+            if isinstance(self, Listbox):
                 # Bind the event to the listbox part of the ScrolledListbox
                 self._listbox.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
             else:
@@ -196,9 +196,9 @@ class GooeyPieWidget:
 
         if event_name == 'select':
             # Select event associated at the moment with listboxes and dropdowns
-            if isinstance(self, Listbox):
+            if isinstance(self, SimpleListbox):
                 self.bind('<<ListboxSelect>>', partial(self._event, event_name))
-            elif isinstance(self, ScrolledListbox):
+            elif isinstance(self, Listbox):
                 self._listbox.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Dropdown):
                 self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
@@ -213,7 +213,7 @@ class GooeyPieWidget:
 
         if event_name in self._tk_event_mappings:
             # Unbind standard events like mouse_down, right_click etc
-            if isinstance(self, ScrolledListbox):
+            if isinstance(self, Listbox):
                 # Unbind the event to the listbox part of the ScrolledListbox
                 self._listbox.unbind(self._tk_event_mappings[event_name])
             elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
@@ -249,9 +249,9 @@ class GooeyPieWidget:
 
         if event_name == 'select':
             # Select event associated at the moment with listboxes and dropdowns
-            if isinstance(self, Listbox):
+            if isinstance(self, SimpleListbox):
                 self.unbind('<<ListboxSelect>>')
-            elif isinstance(self, ScrolledListbox):
+            elif isinstance(self, Listbox):
                 self._listbox.unbind('<<ListboxSelect>>')
             elif isinstance(self, Dropdown):
                 self.unbind('<<ComboboxSelected>>')
@@ -266,15 +266,15 @@ class GooeyPieWidget:
         self._disabled = bool(value)
 
         # Different widgets are disabled in different ways
-        if isinstance(self, (Listbox, Textbox)):
+        if isinstance(self, (SimpleListbox, Textbox)):
             # tk widgets disabled with config
             state = 'disabled' if self._disabled else 'normal'
             self.config(state=state)
 
-        elif isinstance(self, ScrolledListbox):
+        elif isinstance(self, Listbox):
             # The listbox is a member of the ScrolledListbox object
             state = 'disabled' if self._disabled else 'normal'
-            self._listbox.disabled = True
+            self._listbox.config(state=state)
 
         elif isinstance(self, RadiogroupBase):
             # Both the container and each radiobutton are disabled
@@ -287,27 +287,6 @@ class GooeyPieWidget:
             # most other widgets are ttk widgets disabled with the state() method
             state = ['disabled'] if self._disabled else ['!disabled']
             self.state(state)
-
-
-    # TODO: grid (layout) options? Can these be set prior to gridding, or only after they've been added?
-    # Easy to implement by calling grid() on the widget - previously set options are not overridden unless specified
-    # In fact, can call grid() at any time with options set - row/column will be set automatically though.
-
-    # This allows for code like:
-    #       button = gl.Button(app, 'Click me', callback)
-    #       button.stretch/fill = True  <-- need words to describe fill_x and fill_y (haven't used x and y, so am wary...)
-    #       button.align = 'right'    <-- could feasibly see this line being something that would be useful to a user
-    #       button.valign = 'bottom'
-    #       button.location = (2, 3)   <-- this feels counter to the general philosophy of gl.
-    #           Why would a widget be moved to a different location after it has been added?
-    #           Even still, maybe this should be a function, like button.move_to(2, 1)
-
-    # Also users should be able to override the default padding set by add(). This should be possible either
-    # before or after gridding. This means I definitely need a dictionary of these options)
-    #       button.margin = 4               <-- all sides
-    #       label.margin = (2, 4, 5, 1)     <-- top, right, bottom, left
-    #       image.margin = (4, 6)           <-- top/bottom, left/right
-
 
     # TESTING: Retrieve all grid settings
     def get_info(self):
@@ -861,7 +840,7 @@ class Secret(Input):
             self.mask()
 
 
-class Listbox(tk.Listbox, GooeyPieWidget):
+class SimpleListbox(tk.Listbox, GooeyPieWidget):
     def __init__(self, container, items=()):
         GooeyPieWidget.__init__(self, container)
         tk.Listbox.__init__(self, container)
@@ -1041,7 +1020,7 @@ class Listbox(tk.Listbox, GooeyPieWidget):
                 return removed_item
 
 
-class ScrolledListbox(Container, GooeyPieWidget):
+class Listbox(Container, GooeyPieWidget):
     def __init__(self, container, items=()):
         Container.__init__(self, container)
 
@@ -1050,7 +1029,7 @@ class ScrolledListbox(Container, GooeyPieWidget):
         self.rowconfigure(0, weight=1)
 
         # Create listbox and scrollbar
-        self._listbox = Listbox(self, items)
+        self._listbox = SimpleListbox(self, items)
         self._scrollbar = tk.Scrollbar(self, orient='vertical')
 
         # Configure behaviour of scrollbar

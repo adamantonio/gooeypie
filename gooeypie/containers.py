@@ -36,6 +36,26 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         self._grid = None
         self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
 
+        # For explicitly setting the size of containers
+        self._preferred_container_width = 0
+        self._preferred_container_height = 0
+
+    def _init_container(self):
+        """Called when a container is being added to the window (or another container) to set correct width"""
+
+        # If the user has set preferred height/width, then calculate, otherwise it will be automatic
+        if self._preferred_container_width or self._preferred_container_height:
+            self.update_idletasks()
+            min_width = self.winfo_reqwidth()
+            min_height = self.winfo_reqheight()
+
+            container_width = max(min_width, self._preferred_container_width)
+            container_height = max(min_height, self._preferred_container_height)
+
+            self.config(width=container_width)
+            self.config(height=container_height)
+            self.grid_propagate(False)
+
     @property
     def height(self):
         return self.cget('height')
@@ -44,10 +64,17 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
     def height(self, value):
         if type(value) != int or value < 0:
             raise ValueError(f'Height must be a positive integer')
-        self.config(height=value)
-        self.grid_propagate(False)
+        self._preferred_container_height = value
 
-    # TODO: add property for width, check for type properly, try to avoid widths that are too small
+    @property
+    def width(self):
+        return self.cget('width')
+
+    @width.setter
+    def width(self, value):
+        if type(value) != int or value < 0:
+            raise ValueError(f'Width must be a positive integer')
+        self._preferred_container_width = value
 
     @property
     def margin_top(self):
@@ -99,6 +126,9 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
 
     def add(self, widget, row, column, **kwargs):
         """Add the given widget to the grid with arguments"""
+
+        if type(widget) == LabelContainer:
+            widget._init_container()
 
         # Determine the tkinter sticky property
         sticky = ''
@@ -176,7 +206,6 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
                 raise ValueError
             for column, weight in enumerate(args):
                 self.columnconfigure(column, weight=weight)
-                # print(f'self.columnconfigure({column}, weight={weight})')
 
         except ValueError:
             raise ValueError(f'Number of arguments provided ({len(args)}) does not match the '

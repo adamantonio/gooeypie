@@ -17,7 +17,7 @@ app = gp.GooeyPieApp('Do it!')
 new_todo = gp.Input(app)
 add_btn = gp.Button(app, '+', add)
 add_btn.width = 3
-todos = gp.ScrolledListbox(app, ['Exercise', 'Eat a piece of fruit'])
+todos = gp.Listbox(app, ['Exercise', 'Eat a piece of fruit'])
 todos.height = 5
 todos.add_event_listener('double_click', delete)
 instructions = gp.StyleLabel(app, 'Double-click to remove a todo')

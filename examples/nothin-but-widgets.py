@@ -19,7 +19,7 @@ app.add(style_label, 5, 1, align='center')
 
 app.add(gp.Hyperlink(app, 'Hyperlink', '.'), 6, 1)
 app.add(gp.Secret(app), 7, 1, fill=True)
-app.add(gp.Listbox(app, [f'Listbox item {n}' for n in range(1, 7)]), 8, 1, fill=True)
+app.add(gp.SimpleListbox(app, [f'Listbox item {n}' for n in range(1, 7)]), 8, 1, fill=True)
 app.add(gp.Textbox(app), 9, 1, fill=True)
 app.add(gp.ImageButton(app, 'images/favicon.ico', None, '   ImageButton'), 10, 1, fill=True)
 app.add(gp.Radiogroup(app, [f'Radio item {n}' for n in range(1, 4)]), 11, 1, fill=True)
