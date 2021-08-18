@@ -94,8 +94,8 @@ def enable_disable_listboxes(event):
 
 
 # Listbox Container
-listbox_container = gp.LabelContainer(app, 'Listbox')
-listbox = gp.Listbox(listbox_container)
+listbox_container = gp.LabelContainer(app, 'Simple Listbox')
+listbox = gp.SimpleListbox(listbox_container)
 listbox.width = 30
 multiple = gp.Checkbox(listbox_container, 'Allow multiple selection')
 multiple.add_event_listener('change', set_multiple)
@@ -106,7 +106,7 @@ listbox_container.add(multiple, 2, 1)
 
 # Scrolled listbox container
 scrolled_listbox_container = gp.LabelContainer(app, 'Scrolling')
-scroll_listbox = gp.ScrolledListbox(scrolled_listbox_container)
+scroll_listbox = gp.Listbox(scrolled_listbox_container)
 scroll_listbox.add_event_listener('select', select_event)
 scroll_listbox.width = 30
 scrollbar_option = gp.Dropdown(scrolled_listbox_container, ['auto', 'visible', 'hidden'])
