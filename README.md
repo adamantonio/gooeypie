@@ -1,6 +1,13 @@
-# gooeypie
-A minimalist, opinionated GUI library for Python.
+# Gooey Pie
 
-In early development.
+Gooey Pie is a minimalist, opinionated GUI library for Python designed for beignner users of Python.
 
-Docs: https://www.gooeypie.dev/
+## Installation
+
+You can install the Real Python Feed Reader from [PyPI](https://pypi.org/project/gooeypie/):
+
+    pip install gooeypie
+
+## How to use
+
+A getting started guide, full documentation and examples can be found at https://www.gooeypie.dev/

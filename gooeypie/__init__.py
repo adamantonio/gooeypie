@@ -1,7 +1,10 @@
+import tkinter
+from tkinter import messagebox
+from PIL import Image as PILImage, ImageTk
+
 from .widgets import *
 from .containers import *
 from .error import *
-from tkinter import messagebox
 
 
 class WindowBase(Container):
@@ -73,10 +76,6 @@ class WindowBase(Container):
     def set_size(self, width, height):
         self._preferred_size = [width, height]
 
-    def set_icon(self, image_file):
-        self._icon = image_file
-        self._root.iconbitmap(image_file)
-
     @property
     def width(self):
         return self._root.winfo_width()
@@ -119,7 +118,6 @@ class WindowBase(Container):
 
     def _create_menu(self, menu_path, parent):
         """Creates a tk menu object if it does not exist and adds it to the internal dictionary of menu objects
-
         menu_path is either the name of a top level menu or a tuple (top_level_name, sub_menu_name)
         parent is either self._menubar (root menu) or the parent menu for submenus
         """
@@ -412,16 +410,6 @@ class Window(WindowBase):
         self._default_close = self.hide  # By default, additional windows are hidden
         self.hide()
 
-        ## testing ##
-        # When a window is closed with the [X], it is destroyed so cannot be opened again. It might be more intuitive
-        # for students to only have the window hidden so it can be reopened.
-        # this hides the window rather than closing it.
-        # self.on_close(self.hide)
-        # But if I set this here when it's instantiated, then it can be overridden, so I need
-
-        # The other problem here is that any on_close method needs to hide the window explicitly so this will need to
-        # be carefully documented.
-
     def __str__(self):
         return f"<Window '{self.title}'>"
 
@@ -453,12 +441,18 @@ class GooeyPieApp(WindowBase):
         return f"<GooeyPieApp '{self.title}'>"
 
     def _set_default_icon(self):
-        try:
-            import os
-            icon_path = os.path.join(os.path.dirname(__file__), 'gplogo3.ico')
-            self._root.iconbitmap(icon_path)
-        except Exception as e:
-            print(f'Could not set icon: {e}')
+        icon_data = """iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsSAAALEgHS3X78AAACUklEQVRYhc1XgbGCMAwNfwFwAtlAN4ANdANHkA1kA91AN9ANdAPdQDaAP0H+vZ7xQoFCVbz/7nqcQvNekzRpiZn1iJg5Z+aCP4/iYTvSnJo8ZeZqBGIb1YOrJiD9ArENIyKAS4ioIKKQenC73agoCvMUpGlK8/mcoijqm27jl4jiHyLKXORVVVGe5xTHsSHb7XaNd5PJxIg4HA4+AkLD7Uq47XbLYRhykiR8Pp+d/tzv9zydTs3o+1ahoK43q9XK11hNNAQNQasAkM9mMy7L0otccL1eB4toCFiv12+R2yL6PFgTIJPw/AQQDoTRtZiagMViwZvN5iPkAiQwhPQKuN/vTERvu97G8Xg0XugVAJXwwBhwhfVHqsLlcjGFZgzArq6eGk8BqGqoZmMAdlHCnQJ8sVwuB89w9gmJxZByq4Fa4cpuG13JXROAjB0KiEVyvbtrniFAnJCIQ4HEwsiy7DkDHTMIgkEDXbSWAzB2Op28MgGtGXMkw5EXYRhSWZb2Ua82kiRp5gDwSvdD5UT4+BFnhAX9xAXdqMg2huTyAUghXPIHhrEuVNY2YIH6faMbQoBvP5DDiLYhXrEhrV7QEODTyzVAKMJllfaugm38r223HkhEhM8+l20prkVf0V5BqNo803kkgwgY8ClQ+BYu5kd3hSB4Rci1QC2g81CKiTCAiVL5IEaKD4zhN7JeDqTa7XpuR0c0h9K8b2UgRNywOqwSccSQEzMEtFVR2SEQ0NGOc6+LyStAl+1oRs+LSYUiNgY5uTvh0nD/l8upjO9ez5npDxwrvxk2vF3PAAAAAElFTkSuQmCC"""
+        icon = tkinter.PhotoImage(data=icon_data)
+        self._root.iconphoto(True, icon)
+
+    def set_icon(self, image_file):
+        """Sets the icon for all windows in the application"""
+        self._icon = image_file
+
+        if image_file[-3:] == 'ico':
+            self._root.iconbitmap(True, image_file)
+        else:
+            self._root.iconphoto(True, ImageTk.PhotoImage(PILImage.open(image_file)))
 
     def copy_to_clipboard(self, text):
         """Copies the provided text to the OS clipboard"""

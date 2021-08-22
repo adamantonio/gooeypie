@@ -954,7 +954,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
         if len(select) > 1:
             raise ValueError('Cannot set value when multiple items in the listbox are selected')
         if len(select) == 0:
-            raise ValueError('Cannot set value: no item selected in the listbox')
+            raise ValueError('Cannot set value - no item selected in the listbox')
 
         # if multiple selection is enabled, the selected index is in a list
         if self.multiple_selection:
@@ -1309,7 +1309,7 @@ class ImageButton(Button):
         self.configure(image=self._tk_image, compound='left' if text else 'image')
 
     def __str__(self):
-        return f"""<ImageButton '{self.image}'>"""
+        return f"""<ImageButton '{self._image}'>"""
 
     @property
     def image_position(self):
@@ -1505,7 +1505,7 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
         # TODO 4: write a better testing widget
 
     def __str__(self):
-        return f'<Dropdown {tuple(self.choices)}>'
+        return f'<Dropdown {tuple(self.items)}>'
 
     @property
     def items(self):

@@ -31,6 +31,7 @@ app = gp.GooeyPieApp('Event tests')
 # Widgets for testing
 default_options = ['One', 'Two', 'Three']
 button = gp.Button(app, 'Button', None)
+image_button = gp.ImageButton(app, 'chart-icon.png', None)
 checkbox = gp.Checkbox(app, 'Checkbox')
 dropdown = gp.Dropdown(app, default_options)
 hyperlink = gp.Hyperlink(app, 'Hyperlink', 'www.example.com')
@@ -47,7 +48,7 @@ number = gp.Number(app, 1, 10)
 style_label = gp.StyleLabel(app, 'Style Label')
 textbox = gp.Textbox(app)
 
-widgets = (button, checkbox, dropdown, hyperlink, image,
+widgets = (button, image_button, checkbox, dropdown, hyperlink, image,
            entry, label, radios_label, radios, listbox, secret,
            slider, number, style_label, textbox)
 
