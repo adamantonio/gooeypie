@@ -1305,7 +1305,7 @@ class ImageButton(Button):
         else:
             self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
 
-        self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
+        # self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
         self.configure(image=self._tk_image, compound='left' if text else 'image')
 
     def __str__(self):
@@ -1549,6 +1549,15 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
         except Exception:
             raise IndexError(f"Index {index} out of range")
 
+    @property
+    def width(self):
+        return self.cget('width')
+
+    @width.setter
+    def width(self, value):
+        """Sets the width of the dropdown in characters (includes the control buttons)"""
+        self.configure(width=value)
+
     def deselect(self):
         """Sets the selected item in the dropdown to a blank"""
         self.set('')
@@ -1664,4 +1673,3 @@ class Table(ttk.Treeview, GooeyPieWidget):
     def add_data(self, data):
         """Adds a row of data to the table"""
         pass
-

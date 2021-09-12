@@ -247,8 +247,8 @@ app.add(testing_container, 2, 1, fill=True)
 app.add(log_container, 3, 1, fill=True)
 
 # Set some random values
-font_colour_dd.selected = choice(font_colour_dd.choices)
-bg_colour_dd.selected = choice(bg_colour_dd.choices)
+font_colour_dd.selected = choice(font_colour_dd.items)
+bg_colour_dd.selected = choice(bg_colour_dd.items)
 style_lbl.colour = font_colour_dd.selected
 style_lbl.background_colour = bg_colour_dd.selected
 

@@ -1,6 +1,6 @@
 # Gooey Pie
 
-Gooey Pie is a minimalist, opinionated GUI library for Python designed for beignner users of Python.
+Gooey Pie is a minimalist, opinionated GUI library for Python designed for beginner users of Python.
 
 ## Installation
 

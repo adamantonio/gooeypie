@@ -11,7 +11,8 @@ def update_score(event):
 app = gp.GooeyPieApp('Scoreboard')
 
 score_lbl = gp.StyleLabel(app, ' 0 - 0 ')
-score_lbl.font_name = 'Consolas'
+score_lbl.font_name = 'Courier'
+score_lbl.font_weight = 'bold'
 score_lbl.background_color = 'black'
 score_lbl.font_size = 60
 score_lbl.colour = 'red'

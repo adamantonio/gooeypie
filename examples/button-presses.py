@@ -12,9 +12,9 @@ def button_counter(event):
         counter.disabled = True
 
 app = gp.GooeyPieApp('Buttons')
-app.set_grid(1, 1)
-
 counter = gp.Button(app, 'You have not pressed me yet', button_counter)
+
+app.set_grid(1, 1)
 app.add(counter, 1, 1)
 
 app.run()

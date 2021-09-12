@@ -8,8 +8,8 @@ app = gp.GooeyPieApp('Time and date')
 app.width = 250
 
 label = gp.Label(app, 'Available formats:')
-date_options = gp.SimpleListbox(app, date_formats)
-date_options.height = 5
+date_options = gp.Listbox(app, date_formats)
+date_options.height = 8
 ok = gp.Button(app, 'OK', None)
 ok.width = 10
 
