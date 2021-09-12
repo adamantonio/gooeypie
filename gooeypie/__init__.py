@@ -6,6 +6,8 @@ from .widgets import *
 from .containers import *
 from .error import *
 
+__version__ = "0.1.1"
+
 
 class WindowBase(Container):
     """
