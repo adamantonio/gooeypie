@@ -404,6 +404,100 @@ class WindowBase(Container):
             self._root.after_cancel(self._timeout)
 
 
+class FileWindow:
+    """Base class for opening files and folders"""
+    def __init__(self, parent, title):
+        self._options = {'master': parent, 'title': title}
+
+    def set_initial_folder(self, folder_name, *paths):
+        folder_name = folder_name.lower()
+        if folder_name not in ('home', 'documents', 'desktop', 'app'):
+            raise GooeyPieError("Argument 'folder_name' must be one of 'home', 'documents', 'desktop' or 'app'")
+
+        home = os.path.expanduser('~')
+        if folder_name == 'home':
+            self._options['initialdir'] = home
+        if folder_name == 'documents':
+            self._options['initialdir'] = os.path.join(home, 'Documents')
+        if folder_name == 'desktop':
+            self._options['initialdir'] = os.path.join(home, 'Desktop')
+        if folder_name == 'app':
+            self._options['initialdir'] = os.path.abspath(os.getcwd())
+
+        self._options['initialdir'] = os.path.join(self._options['initialdir'], *paths)
+
+    @property
+    def initial_path(self):
+        return self._options.get('initialdir', None)
+
+    @initial_path.setter
+    def initial_path(self, path):
+        self._options['initialdir'] = path
+
+
+class OpenSaveFileWindow(FileWindow):
+    """Windows for opening and saving files
+    Base class for OpenFileWindow and SaveFileWindow
+    """
+    def __init__(self, parent, title):
+        super().__init__(parent, title)
+        self._options['filetypes'] = [('All files', '*.*')]
+
+    def add_file_type(self, description, extension):
+        if self._options['filetypes'] == [('All files', '*.*')]:
+            # Replace the default "All files" file type if it is the only one.
+            self._options['filetypes'] = [(description, extension)]
+        else:
+            self._options['filetypes'].append((description, extension))
+
+
+class OpenFileWindow(OpenSaveFileWindow):
+    """Open file dialog"""
+    def __init__(self, parent, title):
+        super().__init__(parent, title)
+        self._select_multiple_files = False
+
+    @property
+    def allow_multiple(self):
+        return self._select_multiple_files
+
+    @allow_multiple.setter
+    def allow_multiple(self, allow):
+        self._select_multiple_files = bool(allow)
+
+    def open(self):
+        """Launches the file open dialog and returns the selected and path filename(s),
+        Returns None if the user clicks cancel
+        """
+        if self.allow_multiple:
+            return filedialog.askopenfilenames(**self._options) or None
+        else:
+            return filedialog.askopenfilename(**self._options) or None
+
+
+class SaveFileWindow(OpenSaveFileWindow):
+    def __init__(self, parent, title):
+        super().__init__(parent, title)
+
+    def open(self):
+        """Launches the file save dialog and returns the selected/entered filename(s),
+        The filename will include the extension added with add_file_type
+        Returns None if the user clicks cancel
+        """
+
+        # If default extension is not specified, no extension is added even when one is selected
+        return filedialog.asksaveasfilename(**self._options, defaultextension='') or None
+
+
+class OpenFolderWindow(FileWindow):
+    """Allows a user to select a folder on their local system, returns the full path to the folder"""
+    def __init__(self, parent, title):
+        super().__init__(parent, title)
+
+    def open(self):
+        return filedialog.askdirectory(**self._options, mustexist=True) or None
+
+
 class Window(WindowBase):
     """An additional window"""
     def __init__(self, app, title):

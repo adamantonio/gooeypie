@@ -1,5 +1,8 @@
 from tkinter import ttk
+from tkinter import filedialog
 from gooeypie.error import *
+import platform
+import os
 
 # Set to True to add colours to differentiate the frames and windows etc.
 DEBUG = 0
@@ -254,3 +257,4 @@ class LabelContainer(ContainerBase):
             ttk.LabelFrame.__init__(self, master, text=text, style=rand_style)
         else:
             ttk.LabelFrame.__init__(self, master, text=text)
+
