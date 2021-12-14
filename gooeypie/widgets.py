@@ -4,7 +4,7 @@ from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
 from gooeypie.error import GooeyPieError
-from .containers import *   # Used for the Listbox & Radiogroup widgets
+from .containers import *  # Used for the Listbox & Radiogroup widgets
 
 import platform
 
@@ -15,6 +15,7 @@ if platform.system() == 'Darwin':
 
 try:
     from PIL import Image as PILImage, ImageTk
+
     PILLOW = True
 except ImportError:
     PILImage = ImageTk = None
@@ -23,6 +24,7 @@ except ImportError:
 
 class GooeyPieEvent:
     """Event objects are passed to callback functions"""
+
     def __init__(self, event_name, gooeypie_widget, tk_event=None, menu=None):
         """Creates a GooeyPie event object, passed to all callback functions"""
         self.event_name = event_name
@@ -44,8 +46,8 @@ class GooeyPieEvent:
             else:
                 self.key = {
                     'key_code': tk_event.char,  # single character representing the key
-                    'name': tk_event.keysym,    # a string representing the key pressed
-                    'code': tk_event.keycode    # numerical keycode
+                    'name': tk_event.keysym,  # a string representing the key pressed
+                    'code': tk_event.keycode  # numerical keycode
                 }
         else:
             self.mouse = None
@@ -153,8 +155,11 @@ class GooeyPieWidget:
 
         if event_name in self._tk_event_mappings:
             if isinstance(self, Listbox):
-                # Bind the event to the listbox part of the ScrolledListbox
+                # Bind the event to the listbox part of the Listbox widget
                 self._listbox.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+            elif isinstance(self, Table):
+                # Bind the event to the treeview part of the Table widget
+                self._treeview.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
             else:
                 self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
@@ -191,17 +196,19 @@ class GooeyPieWidget:
                 self.bind('<<Modified>>', partial(self._event, event_name))
 
         if event_name == 'press':
-            # press event only on buttons (for now perhaps...)
+            # press event only on buttons
             self.configure(command=partial(self._event, event_name))
 
         if event_name == 'select':
-            # Select event associated at the moment with listboxes and dropdowns
+            # Select event associated with listboxes, dropdowns and tables
             if isinstance(self, SimpleListbox):
                 self.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Listbox):
                 self._listbox.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Dropdown):
                 self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
+            elif isinstance(self, Table):
+                self._treeview.bind('<<TreeviewSelect>>', partial(self._event, event_name))
 
     def remove_event_listener(self, event_name):
         """
@@ -255,6 +262,8 @@ class GooeyPieWidget:
                 self._listbox.unbind('<<ListboxSelect>>')
             elif isinstance(self, Dropdown):
                 self.unbind('<<ComboboxSelected>>')
+            elif isinstance(self, Table):
+                self._treeview.unbind('<<TreeviewSelect>>')
 
     # All widgets can be enabled and disabled
     @property
@@ -275,6 +284,12 @@ class GooeyPieWidget:
             # The listbox is a member of the ScrolledListbox object
             state = 'disabled' if self._disabled else 'normal'
             self._listbox.config(state=state)
+
+        elif isinstance(self, Table):
+            # The treeview is a member of the Table object
+            # Note: events still fire when the table is disabled
+            state = ['disabled'] if self._disabled else ['!disabled']
+            self._treeview.state(state)
 
         elif isinstance(self, RadiogroupBase):
             # Both the container and each radiobutton are disabled
@@ -700,7 +715,7 @@ class StyleLabel(Label):
         for n, x in enumerate(layout):
             if x == '(':
                 element = ""
-                for y in layout[n+2:]:
+                for y in layout[n + 2:]:
                     if y != ',':
                         element += str(y)
                     else:
@@ -868,8 +883,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     @height.setter
     def height(self, lines):
-        """Sets the *minimum* number of lines in the listbox. The number of visible lines may be different
-        """
+        """Sets the minimum number of lines in the listbox."""
         self.configure(height=lines)
 
     @property
@@ -879,7 +893,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     @width.setter
     def width(self, chars):
-        """Sets the width of the listbox, in characters. Default is 20."""
+        """Sets the minimum width of the listbox, in characters. Default is 20."""
         self.configure(width=chars)
 
     @property
@@ -1016,7 +1030,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
                 # Return single value
                 index = self.selected_index
                 removed_item = self.remove_item(index)
-                self.selected_index = index   # Keep the existing selection
+                self.selected_index = index  # Keep the existing selection
                 return removed_item
 
 
@@ -1327,7 +1341,7 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
         self._checked = tk.BooleanVar(value=False)
         ttk.Checkbutton.__init__(self, container, text=text, variable=self._checked)
         self.state(['!alternate'])
-        self._events['change'] = None   # Checkboxes support the 'change' event
+        self._events['change'] = None  # Checkboxes support the 'change' event
 
     def __str__(self):
         return f'''<Checkbox '{self.cget("text")}'>'''
@@ -1343,9 +1357,10 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 
 class RadiogroupBase(GooeyPieWidget):
     """Base class used by Radiogroup and LabelledRadiogroup"""
+
     def __init__(self, container, choices, orient, override_spacing=False):
         GooeyPieWidget.__init__(self, container)
-        self._events['change'] = None   # Radiobuttons support the 'change' event
+        self._events['change'] = None  # Radiobuttons support the 'change' event
         self._selected = tk.StringVar()
 
         # If images are used (to be implemented, need to support passing a list of 2-tuples,
@@ -1421,6 +1436,7 @@ class RadiogroupBase(GooeyPieWidget):
 
 class Radiogroup(Container, RadiogroupBase):
     """A set of radio buttons"""
+
     def __init__(self, container, choices, orient='vertical'):
         Container.__init__(self, container)
         RadiogroupBase.__init__(self, container, choices, orient, True)
@@ -1431,6 +1447,7 @@ class Radiogroup(Container, RadiogroupBase):
 
 class LabelRadiogroup(LabelContainer, RadiogroupBase):
     """A set of radio buttons in a label frame"""
+
     def __init__(self, container, title, choices, orient='vertical'):
         LabelContainer.__init__(self, container, title)
         RadiogroupBase.__init__(self, container, choices, orient)
@@ -1439,12 +1456,12 @@ class LabelRadiogroup(LabelContainer, RadiogroupBase):
         return f'<LabelRadiogroup {tuple(self.options)}>'
 
 
-
 class OldRadiogroupBase(GooeyPieWidget):
     """Base class used by Radiogroup and LabelledRadiogroup"""
+
     def __init__(self, container, choices, orient):
         GooeyPieWidget.__init__(self, container)
-        self._events['change'] = None   # Radiobuttons support the 'change' event
+        self._events['change'] = None  # Radiobuttons support the 'change' event
         self._selected = tk.StringVar()
 
         # If images are used (to be implemented, need to support passing a list of 2-tuples,
@@ -1474,6 +1491,7 @@ class OldRadiogroupBase(GooeyPieWidget):
 
 class OldRadiogroup(ttk.Frame, RadiogroupBase):
     """A set of radio buttons"""
+
     def __init__(self, container, choices, orient='vertical'):
         ttk.Frame.__init__(self, container)
         RadiogroupBase.__init__(self, container, choices, orient)
@@ -1484,6 +1502,7 @@ class OldRadiogroup(ttk.Frame, RadiogroupBase):
 
 class OldLabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
     """A set of radio buttons in a label frame"""
+
     def __init__(self, container, title, choices, orient='vertical'):
         ttk.LabelFrame.__init__(self, container, text=title)
         RadiogroupBase.__init__(self, container, choices, orient)
@@ -1664,12 +1683,237 @@ class Number(ttk.Spinbox, GooeyPieWidget):
         self.configure(wrap=bool(state))
 
 
-class Table(ttk.Treeview, GooeyPieWidget):
+class Table(Container, GooeyPieWidget):
     """For displaying tabular data"""
-    def columns(self, cols):
-        """Sets the column names of the table"""
-        pass
+    icon_spacing = '   '
+    sort_ascending_icon = f'{icon_spacing}▲'
+    sort_descending_icon = f'{icon_spacing}▼'
 
-    def add_data(self, data):
+    def __init__(self, container, *headings):
+        Container.__init__(self, container)
+
+        # Set container to fill cell
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        # Create and configure treeview
+        self._num_columns = len(headings)
+        column_ids = tuple(range(self._num_columns))  # tuple of form (0, 1, 2, etc)
+        self._treeview = ttk.Treeview(self, columns=column_ids, show='headings', selectmode='browse')
+        for index, heading in enumerate(headings):
+            self._treeview.heading(index, text=heading, command=lambda col_id=index: self._sort_data(col_id))
+
+        # Create vertical scrollbar configure behaviour
+        self._v_scrollbar = ttk.Scrollbar(self, orient='vertical')
+        self._v_scrollbar.config(command=self._treeview.yview)
+        self._treeview.config(yscroll=self._v_scrollbar.set)
+
+        # create horizontal scrollbar and configure behaviour
+        self._h_scrollbar = ttk.Scrollbar(self, orient='horizontal')
+        self._h_scrollbar.config(command=self._treeview.xview)
+        self._treeview.config(xscroll=self._h_scrollbar.set)
+
+        # Add to parent Container
+        self._treeview.grid(row=0, column=0, sticky='nsew')
+        self._v_scrollbar.grid(row=0, column=1, sticky='nsew')
+        self._h_scrollbar.grid(row=1, column=0, sticky='nsew')
+
+        # Default scrollbar settings and bindings to update visibility of scrollbars
+        self._treeview.bind('<Configure>', self._update_scrollbar)  # Update scrollbar visibility when widget changes size
+        self._treeview.bind('<ButtonRelease-1>', self._update_scrollbar)
+
+        GooeyPieWidget.__init__(self, container)
+        self._events['select'] = None
+
+    def __str__(self):
+        # Identified by column names
+        return f"<Table {tuple([self._treeview.heading(col_id)['text'] for col_id in range(self._num_columns)])}>"
+
+    @property
+    def height(self):
+        """Returns the number of visible row in the table"""
+        return self._treeview.cget('height')
+
+    @height.setter
+    def height(self, lines):
+        """Sets the*minimum number of visible rows in the table. The number of visible lines may be different"""
+        self._treeview.configure(height=lines)
+
+    def _update_scrollbar(self, _event=None):
+        """Adds/removes the horizontal scrollbar as needed"""
+        horizontal_scrollbar_needed = self._treeview.xview() != (0.0, 1.0)
+        row_span = 1 if horizontal_scrollbar_needed else 2
+
+        self._treeview.grid_remove()
+        self._v_scrollbar.grid_remove()
+        self._h_scrollbar.grid_remove()
+
+        self._treeview.grid(row=0, column=0, rowspan=row_span)
+        self._v_scrollbar.grid(row=0, column=1, rowspan=row_span)
+        if horizontal_scrollbar_needed:
+            self._h_scrollbar.grid()
+
+    def _sort_data(self, column_id):
+        """When the column heading is clicked on, the data are sorted according to that column"""
+
+        # Do not allow sorting if the table is disabled
+        if self._disabled:
+            return
+
+        # Update heading text with icon
+        sort_descending = False
+        for col_id in range(self._num_columns):
+            heading = self._treeview.heading(col_id)['text']
+            if col_id == column_id:
+                # Set the sort icon according to whatever is already there
+                if heading.endswith(self.sort_ascending_icon):
+                    # Change from ascending icon to descending
+                    heading_descending = f'{heading[:-len(self.sort_descending_icon)]}{self.sort_descending_icon}'
+                    self._treeview.heading(col_id, text=heading_descending)
+                    sort_descending = True
+                elif heading.endswith(self.sort_descending_icon):
+                    # Change from descending icon to ascending
+                    heading_ascending = f'{heading[:-len(self.sort_descending_icon)]}{self.sort_ascending_icon}'
+                    self._treeview.heading(col_id, text=heading_ascending)
+                else:
+                    # No current icon - set to descending by default
+                    heading_ascending = f'{heading}{self.sort_ascending_icon}'
+                    self._treeview.heading(col_id, text=heading_ascending)
+            else:
+                # Clear the icon from the heading text if it exists
+                if heading.endswith(self.sort_ascending_icon) or heading.endswith(self.sort_descending_icon):
+                    self._treeview.heading(col_id, text=heading[:-len(self.sort_descending_icon)])
+
+        # Sort the data
+        self.data = sorted(self.data, key=lambda l: l[column_id], reverse=sort_descending)
+
+    def _clear_sort_icons(self):
+        """Clear any icons that have been appended to column headings"""
+        for col_id in range(self._num_columns):
+            heading = self._treeview.heading(col_id)['text']
+            if heading.endswith(self.sort_ascending_icon) or heading.endswith(self.sort_descending_icon):
+                self._treeview.heading(col_id, text=heading[:-len(self.sort_descending_icon)])
+
+    @property
+    def data(self):
+        """Returns all data in the table as a list of lists"""
+        return [self._treeview.item(line)['values'] for line in self._treeview.get_children()]
+
+    @data.setter
+    def data(self, values):
+        """Replaces all data in the table with the given values, which must be a list of lists"""
+
+        if not all(type(row) in (list, tuple) for row in values):
+            raise ValueError('Table data must be a list of lists')
+        if not all(len(row) == self._num_columns for row in values):
+            raise ValueError('Could not set table data - the number of columns of the table does not match')
+
+        self.clear()
+        for line in values:
+            self._treeview.insert('', 'end', values=line)
+
+    @property
+    def multiple_selection(self):
+        """Allows multiple rows to be selected with shift-click or ctrl-click"""
+        return str(self._treeview.cget('selectmode')) == 'extended'
+
+    @multiple_selection.setter
+    def multiple_selection(self, multiple):
+        """Changes the selection mode between single and multiple"""
+
+        mode = 'extended' if multiple else 'browse'
+        self._treeview.config(selectmode=mode)
+        # Clear the selection if single selection is enabled
+        if not multiple:
+            self.select_none()
+
+    @property
+    def selected(self):
+        """Returns the selected row, or a list of rows, or None"""
+        selected_ids = self._treeview.selection()
+        if not selected_ids:
+            return None
+        if self.multiple_selection:
+            return [self._treeview.item(row_id)['values'] for row_id in reversed(selected_ids)]
+        else:
+            return self._treeview.item(selected_ids)['values']
+
+    def add_row_at(self, index, *data):
+        """Adds a row of data to the table at a given index"""
+        # Check if location is an integer
+        if type(index) != int and index != 'end':
+            raise TypeError(f'index must be an integer')
+        # Check if the number of columns in the data is correct
+        if len(data) != self._num_columns:
+            raise ValueError(f'The number of data arguments given ({len(data)}) does not match '
+                             f'the number of columns in the table ({self._num_columns})')
+
+        self._treeview.insert('', index, values=data)
+
+        # Clear any sort icons if new data is added
+        self._clear_sort_icons()
+
+    def add_row(self, *data):
         """Adds a row of data to the table"""
-        pass
+        self.add_row_at('end', *data)
+
+    def add_row_to_top(self, *data):
+        """Adds a row of data to the start of the table"""
+        self.add_row_at(0, *data)
+
+    def clear(self):
+        """Removes all rows from the table"""
+        for row_id in self._treeview.get_children():
+            self._treeview.delete(row_id)
+
+    def remove_row(self, index):
+        """Removes the specified row from the table, indexed from 0"""
+        row_ids = self._treeview.get_children()
+        if type(index) != int:
+            raise TypeError('index must be an integer')
+        if index < 0 or index > len(row_ids) - 1:
+            raise IndexError(f'The index must be between 0 and {len(row_ids) - 1}. '
+                             f'The value of index was: {index}')
+        self._treeview.delete(row_ids[index])
+
+    def remove_selected(self):
+        """Removes the currently selected row from the table"""
+        self._treeview.delete(*self._treeview.selection())
+
+    def set_column_width(self, column, width):
+        """Sets the width in pixels of the specified column, indexed from 0"""
+        if type(column) != int or column < 0:
+            raise TypeError('Column number must be a positive integer')
+        if type(width) != int or width <= 0:
+            raise TypeError('Column width must be a positive integer')
+        self._treeview.column(column, width=width)
+
+    def set_column_widths(self, *widths):
+        """Sets the width in pixels of all columns of the table"""
+        if len(widths) != self._num_columns:
+            raise ValueError(f'The number of arguments supplied ({len(widths)}) does not match '
+                             f'the number of columns in the table ({self._num_columns})')
+        for column, width in enumerate(widths):
+            self.set_column_width(column, width)
+
+    def select_row(self, index):
+        """Selects a given row in the table, indexed from 0"""
+        all_rows = self._treeview.get_children()
+        if len(self._treeview.get_children()) == 0:
+            raise ValueError(f'Table has no rows to select')
+        if index not in range(len(all_rows)):
+            raise IndexError(f'The index must be between 0 and {len(all_rows) - 1}. '
+                             f'The value of the index specified was {index}.')
+        row_id = all_rows[index]
+        self._treeview.selection_set(row_id)
+        self._treeview.see(row_id)  # Show the selected row (in case it is not be in view)
+
+    def select_all(self):
+        """Selects all rows of the table if multiple selection is enabled.
+        Has no effect if multiple selection is not enabled"""
+        if self.multiple_selection:
+            self._treeview.selection_set(*self._treeview.get_children())
+
+    def select_none(self):
+        """Clears any selected rows in the table"""
+        self._treeview.selection_remove(*self._treeview.selection())

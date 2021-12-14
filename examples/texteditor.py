@@ -38,7 +38,7 @@ save_file_win.add_file_type('Plain text', '*.txt')
 save_file_win.set_initial_folder('desktop')
 
 app.set_grid(3, 3)
-app.width = 600
+app.width = 400
 app.set_column_weights(0, 1, 0)
 app.add(filename_lbl, 1, 1, valign='middle')
 app.add(filename_inp, 1, 2, fill=True, valign='middle')
