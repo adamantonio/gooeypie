@@ -298,6 +298,12 @@ class GooeyPieWidget:
             for radio in self.winfo_children():
                 radio.state(state)  # disable each radiobutton
 
+        elif isinstance(self, Hyperlink):
+            # Change the hand cursor to the 'no' cursor for a disabled Hyperlink
+            self.cursor = 'no' if self._disabled else 'hand2'
+            state = ['disabled'] if self._disabled else ['!disabled']
+            self.state(state)
+
         else:
             # most other widgets are ttk widgets disabled with the state() method
             state = ['disabled'] if self._disabled else ['!disabled']
@@ -734,7 +740,8 @@ class Hyperlink(StyleLabel):
         self.url = url
         self.colour = 'blue'
         self.underline = 'underline'
-        self.bind('<Enter>', lambda e: self.configure(cursor='hand2'))
+        self.cursor = 'hand2'
+        self.bind('<Enter>', lambda e: self.configure(cursor=self.cursor))
         self.bind('<Button-1>', self._open_link)
         self.configure(takefocus=True)  # Labels don't normally take focus when tabbing
 
