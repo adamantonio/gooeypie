@@ -47,7 +47,7 @@ slider = gp.Slider(app, 1, 10)
 number = gp.Number(app, 1, 10)
 style_label = gp.StyleLabel(app, 'Style Label')
 textbox = gp.Textbox(app)
-table = gp.Table(app, 'Head 1', 'Head 2')
+table = gp.Table(app, ['Head 1', 'Head 2'])
 table.data = [['one', 'one'], ['two', 'two'], ['three', 'three']]
 table.height = 4
 table.set_column_widths(60, 60)

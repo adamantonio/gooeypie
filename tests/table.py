@@ -144,10 +144,11 @@ operations_select = gp.Container(operations_cont)
 operations_get = gp.Container(operations_cont)
 log_cont = gp.LabelContainer(app, 'Log')
 
-table = gp.Table(widget_cont, 'First name', 'Last name', 'Salary')
+table = gp.Table(widget_cont, ['First name', 'Last name', 'Salary'])
 table.set_column_widths(150, 150, 100)
 table.height = 5
-table.state(('disabled',))
+table.set_column_alignment(2, 'center')
+
 for _ in range(5):
     add_row(None)
 multiple_selection = gp.Checkbox(widget_cont, 'Multiple selection')

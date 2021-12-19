@@ -1696,8 +1696,12 @@ class Table(Container, GooeyPieWidget):
     sort_ascending_icon = f'{icon_spacing}▲'
     sort_descending_icon = f'{icon_spacing}▼'
 
-    def __init__(self, container, *headings):
+    def __init__(self, container, headings):
         Container.__init__(self, container)
+
+        # Check that the heading are in a list
+        if type(headings) != list and type(headings) != tuple:
+            raise ValueError(f'Headings must be a list. Argument was: {type(headings)}')
 
         # Set container to fill cell
         self.columnconfigure(0, weight=1)
@@ -1709,6 +1713,10 @@ class Table(Container, GooeyPieWidget):
         self._treeview = ttk.Treeview(self, columns=column_ids, show='headings', selectmode='browse')
         for index, heading in enumerate(headings):
             self._treeview.heading(index, text=heading, command=lambda col_id=index: self._sort_data(col_id))
+
+        # Left align cell contents to center by default
+        for col_id in column_ids:
+            self._treeview.column(col_id, anchor='w')
 
         # Create vertical scrollbar configure behaviour
         self._v_scrollbar = ttk.Scrollbar(self, orient='vertical')
@@ -1902,6 +1910,24 @@ class Table(Container, GooeyPieWidget):
                              f'the number of columns in the table ({self._num_columns})')
         for column, width in enumerate(widths):
             self.set_column_width(column, width)
+
+    def set_column_alignment(self, column, align):
+        """Sets the alignment of the specified column, indexed from 0"""
+        alignment_mapping = {'left': 'w', 'center': 'center', 'right': 'e'}
+
+        if type(column) != int or column < 0:
+            raise TypeError('Column number must be a positive integer')
+        if align not in alignment_mapping.keys():
+            raise ValueError(f'Column alignment must be either "left", "right" or "center". '
+                             f'The value given was {align}')
+        self._treeview.column(column, anchor=alignment_mapping[align])
+
+    def set_column_alignments(self, *aligns):
+        if len(aligns) != self._num_columns:
+            raise ValueError(f'The number of arguments supplied ({len(aligns)}) does not match '
+                             f'the number of columns in the table ({self._num_columns})')
+        for column, align in enumerate(aligns):
+            self.set_column_alignment(column, align)
 
     def select_row(self, index):
         """Selects a given row in the table, indexed from 0"""
