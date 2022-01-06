@@ -252,6 +252,4 @@ app.add(log_cont, 3, 1, fill=True, stretch=True)
 table.add_event_listener('select', select)
 table.add_event_listener('double_click', double_clicked)
 
-# table._treeview.state(['disabled'])
-
 app.run()

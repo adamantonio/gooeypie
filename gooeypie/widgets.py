@@ -200,7 +200,7 @@ class GooeyPieWidget:
             self.configure(command=partial(self._event, event_name))
 
         if event_name == 'select':
-            # Select event associated with listboxes, dropdowns and tables
+            # Select event associated with Listboxes, dropdowns and tables
             if isinstance(self, SimpleListbox):
                 self.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Listbox):
@@ -1857,7 +1857,7 @@ class Table(Container, GooeyPieWidget):
         """Adds a row of data to the table at a given index"""
         # Check if location is an integer
         if type(index) != int and index != 'end':
-            raise TypeError(f'index must be an integer')
+            raise TypeError(f'index must be an integer. The value provided was {index}')
         # Check if the number of columns in the data is correct
         if len(data) != self._num_columns:
             raise ValueError(f'The number of data arguments given ({len(data)}) does not match '
@@ -1885,10 +1885,10 @@ class Table(Container, GooeyPieWidget):
         """Removes the specified row from the table, indexed from 0"""
         row_ids = self._treeview.get_children()
         if type(index) != int:
-            raise TypeError('index must be an integer')
+            raise TypeError(f'index must be an integer. The value provided was {index}')
         if index < 0 or index > len(row_ids) - 1:
             raise IndexError(f'The index must be between 0 and {len(row_ids) - 1}. '
-                             f'The value of index was: {index}')
+                             f'The value of index was {index}')
         self._treeview.delete(row_ids[index])
 
     def remove_selected(self):
@@ -1898,9 +1898,9 @@ class Table(Container, GooeyPieWidget):
     def set_column_width(self, column, width):
         """Sets the width in pixels of the specified column, indexed from 0"""
         if type(column) != int or column < 0:
-            raise TypeError('Column number must be a positive integer')
+            raise TypeError(f'Column number must be a positive integer. The value given was {column}')
         if type(width) != int or width <= 0:
-            raise TypeError('Column width must be a positive integer')
+            raise TypeError(f'Column width must be a positive integer. The value given was {width}')
         self._treeview.column(column, width=width)
 
     def set_column_widths(self, *widths):
@@ -1916,13 +1916,14 @@ class Table(Container, GooeyPieWidget):
         alignment_mapping = {'left': 'w', 'center': 'center', 'right': 'e'}
 
         if type(column) != int or column < 0:
-            raise TypeError('Column number must be a positive integer')
+            raise TypeError(f'Column number must be a positive integer. The value given was {column}')
         if align not in alignment_mapping.keys():
-            raise ValueError(f'Column alignment must be either "left", "right" or "center". '
-                             f'The value given was {align}')
+            raise ValueError(f'Column alignment value must be either "left", "right" or "center". '
+                             f'The value provided was "{align}"')
         self._treeview.column(column, anchor=alignment_mapping[align])
 
     def set_column_alignments(self, *aligns):
+        """Sets the text alignment (left, center or right) """
         if len(aligns) != self._num_columns:
             raise ValueError(f'The number of arguments supplied ({len(aligns)}) does not match '
                              f'the number of columns in the table ({self._num_columns})')

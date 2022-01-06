@@ -29,7 +29,7 @@ total_lbl = gp.StyleLabel(app, '')
 total_lbl.font_size = 14
 
 app.set_grid(7, 2)
-app.add(date_lbl, 1, 1)
+app.add(date_lbl, 1, 1, align='right')
 app.add(date_inp, 1, 2)
 app.add(hours_lbl, 2, 1, align='right')
 app.add(hours_inp, 2, 2)
