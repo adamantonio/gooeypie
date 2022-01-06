@@ -1,3 +1,4 @@
+import tkinter
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
@@ -128,6 +129,16 @@ class GooeyPieWidget:
         3 arguments to the callback"""
         self._event(event_name)
 
+    def _textbox_change_event(self, event_name, key_code):
+        """To implement the change event on ScrolledText, a sentinel variable is associated with the contents
+        of the text widget. This value is updated
+        """
+        if self.text != self._sentinel.get():
+            # Only process the event if the key release was a change in content, thus ignoring modifier keys etc
+            self._sentinel.set(self.text)
+            self.text = self._sentinel.get()  # just in case
+            self._event(event_name)
+
     def add_event_listener(self, event_name, callback):
         """Registers callback to respond to certain events"""
 
@@ -193,7 +204,8 @@ class GooeyPieWidget:
             if isinstance(self, Textbox):
                 # TODO: change event for the textbox is complicated - will need to add a 'sentinel' to the Textbox widget
                 # http://webcache.googleusercontent.com/search?q=cache:KpbCmAzvn_cJ:code.activestate.com/recipes/464635-call-a-callback-when-a-tkintertext-is-modified/+&cd=2&hl=en&ct=clnk&gl=au
-                self.bind('<<Modified>>', partial(self._event, event_name))
+                # self.bind('<<Modified>>', partial(self._event, event_name))
+                self.bind('<KeyRelease>', partial(self._textbox_change_event, event_name))
 
         if event_name == 'press':
             # press event only on buttons
@@ -241,14 +253,13 @@ class GooeyPieWidget:
                 self.unbind('<Return>')
 
             if isinstance(self, Input):
-                # If there is a change event, then
+                # If there is a change event, then delete the trace
                 if self._observer:
                     self._value.trace_vdelete('w', self._observer)
                     self._observer = None
 
             if isinstance(self, Textbox):
-                # TODO: add_event_listener not implemented
-                self.unbind('<<Modified>>')
+                self.unbind('<KeyRelease>')
 
         if event_name == 'press':
             # press event on buttons
@@ -1220,6 +1231,7 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
     def __init__(self, container, width=20, height=5):
         GooeyPieWidget.__init__(self, container)
         scrolledtext.ScrolledText.__init__(self, container, width=width, height=height)
+        self._sentinel = tk.StringVar()
 
         self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'),
                        wrap='word', highlightcolor='systemHighlight', highlightthickness=1)
@@ -1234,7 +1246,7 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
         self.bind('<Tab>', self.focus_next_widget)
         self.bind('<Shift-Tab>', self.focus_previous_widget)
         self.bind('<Control-Tab>', self.insert_tab)
-        # self._events['change'] = None
+        self._events['change'] = None
 
     # TODO: readonly option
     # https://stackoverflow.com/questions/3842155/is-there-a-way-to-make-the-tkinter-text-widget-read-only
