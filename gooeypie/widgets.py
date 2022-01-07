@@ -1829,7 +1829,6 @@ class Table(Container, GooeyPieWidget):
     @data.setter
     def data(self, values):
         """Replaces all data in the table with the given values, which must be a list of lists"""
-
         if not all(type(row) in (list, tuple) for row in values):
             raise ValueError('Table data must be a list of lists')
         if not all(len(row) == self._num_columns for row in values):
@@ -1847,7 +1846,6 @@ class Table(Container, GooeyPieWidget):
     @multiple_selection.setter
     def multiple_selection(self, multiple):
         """Changes the selection mode between single and multiple"""
-
         mode = 'extended' if multiple else 'browse'
         self._treeview.config(selectmode=mode)
         # Clear the selection if single selection is enabled
@@ -1865,11 +1863,13 @@ class Table(Container, GooeyPieWidget):
         else:
             return self._treeview.item(selected_ids)['values']
 
-    def add_row_at(self, index, *data):
+    def add_row_at(self, index, data):
         """Adds a row of data to the table at a given index"""
         # Check if location is an integer
         if type(index) != int and index != 'end':
             raise TypeError(f'index must be an integer. The value provided was {index}')
+        if not type(data) in (list, tuple):
+            raise TypeError(f'row data must be a list')
         # Check if the number of columns in the data is correct
         if len(data) != self._num_columns:
             raise ValueError(f'The number of data arguments given ({len(data)}) does not match '
@@ -1880,16 +1880,16 @@ class Table(Container, GooeyPieWidget):
         # Clear any sort icons if new data is added
         self._clear_sort_icons()
 
-    def add_row(self, *data):
+    def add_row(self, data):
         """Adds a row of data to the table"""
-        self.add_row_at('end', *data)
+        self.add_row_at('end', data)
 
-    def add_row_to_top(self, *data):
+    def add_row_to_top(self, data):
         """Adds a row of data to the start of the table"""
-        self.add_row_at(0, *data)
+        self.add_row_at(0, data)
 
     def clear(self):
-        """Removes all rows from the table"""
+        """Removes all data rows from the table"""
         for row_id in self._treeview.get_children():
             self._treeview.delete(row_id)
 
@@ -1901,11 +1901,15 @@ class Table(Container, GooeyPieWidget):
         if index < 0 or index > len(row_ids) - 1:
             raise IndexError(f'The index must be between 0 and {len(row_ids) - 1}. '
                              f'The value of index was {index}')
+        row_data = self._treeview.item(row_ids[index])['values']
         self._treeview.delete(row_ids[index])
+        return row_data
 
     def remove_selected(self):
         """Removes the currently selected row from the table"""
+        row_data = self.selected
         self._treeview.delete(*self._treeview.selection())
+        return row_data
 
     def set_column_width(self, column, width):
         """Sets the width in pixels of the specified column, indexed from 0"""

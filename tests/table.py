@@ -26,21 +26,21 @@ table_backup = table_data.copy()
 
 def add_row(event):
     if len(table_data):
-        first_name, last_name, salary = list(table_data.pop().values())
+        row = list(table_data.pop().values())
         if event:
-            output = f"Added {first_name, last_name, salary}"
+            output = f"Added {row}"
             if event.widget == add_btn:
-                table.add_row(first_name, last_name, salary)
+                table.add_row(row)
             elif event.widget == add_to_top_btn:
-                table.add_row_to_top(first_name, last_name, salary)
+                table.add_row_to_top(row)
                 output += ' to start'
             else:
                 index = int(add_at_inp.text)
-                table.add_row_at(index, first_name, last_name, salary)
+                table.add_row_at(index, row)
                 output += f' to index {index}'
             log.prepend_line(output)
         else:
-            table.add_row(first_name, last_name, salary)
+            table.add_row(row)
     else:
         add_btn.disabled = True
         add_to_top_btn.disabled = True
@@ -57,8 +57,7 @@ def clear_table(event):
 
 
 def remove_selected(event):
-    row = table.selected
-    table.remove_selected()
+    row = table.remove_selected()
     log.prepend_line(f'Removed {row}')
 
 
@@ -98,8 +97,8 @@ def select_all(event):
 
 
 def remove_row(event):
-    table.remove_row(int(remove_row_inp.text))
-
+    removed = table.remove_row(int(remove_row_inp.text))
+    log.prepend_line(f'Removed {removed}')
 
 def clear_log(event):
     log.clear()
