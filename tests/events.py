@@ -58,6 +58,7 @@ widgets = (button, image_button, checkbox, dropdown, table, image,
 
 rows = len(widgets)//2 + 1
 app.set_grid(rows, 3)
+app.set_column_weights(0, 0, 1)
 
 # Add all available events to each widget
 for count, w in enumerate(widgets):
@@ -85,9 +86,9 @@ button_area.add(enable, 1, 3)
 
 log = gp.Textbox(log_area, 80)
 log_area.set_grid(2, 1)
-log_area.add(log, 1, 1, stretch=True)
+log_area.add(log, 1, 1, stretch=True, fill=True)
 log_area.add(button_area, 2, 1)
 log_area.set_row_weights(1, 0)
-app.add(log_area, 1, 3, row_span=rows, stretch=True)
+app.add(log_area, 1, 3, row_span=rows, stretch=True, fill=True)
 
 app.run()

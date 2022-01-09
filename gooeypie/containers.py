@@ -202,23 +202,24 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
                             f'(Rows: {len(self._grid)}, Columns: {len(self._grid[0])})')
 
     def set_column_weights(self, *args):
-        try:
-            if len(args) != len(self._grid[0]):
-                raise ValueError
-            for column, weight in enumerate(args):
-                self.columnconfigure(column, weight=weight)
-
-        except ValueError:
+        """Determines how the space of columns is allocated in the window or container"""
+        if self._grid is None:
+            raise GooeyPieError('Column weights cannot be set until set_grid() has been used to define the grid')
+        if len(args) != len(self._grid[0]):
             raise ValueError(f'Number of arguments provided ({len(args)}) does not match the '
                              f'number of columns ({len(self._grid[0])})')
-        except TypeError:
-            raise TypeError('Column weights cannot be set until set_grid() has been used to define the grid')
+
+        for column, weight in enumerate(args):
+            self.columnconfigure(column, weight=weight)
 
     def set_row_weights(self, *args):
-        """
-        As above - need to do some checks and balances. Might be better
-        to split out to a separate function
-        """
+        """Determines how the space of columns is allocated in the window or container"""
+        if self._grid is None:
+            raise GooeyPieError('Row weights cannot be set until set_grid() has been used to define the grid')
+        if len(args) != len(self._grid):
+            raise ValueError(f'Number of arguments provided ({len(args)}) does not match the '
+                             f'number of rows ({len(self._grid)})')
+
         for row, weight in enumerate(args):
             self.rowconfigure(row, weight=weight)
 
