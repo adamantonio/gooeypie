@@ -1,9 +1,7 @@
 import gooeypie as gp
 
-app = gp.GooeyPieApp('Pay Calculator')
-
 def add_hours(event):
-    summary_tbl.add_row(date_inp.text, hours_inp.text)
+    summary_tbl.add_row([date_inp.text, hours_inp.text])
 
 def calculate_total_pay(event):
     hours = 0
@@ -11,6 +9,9 @@ def calculate_total_pay(event):
         hours += float(row[1])
     total_pay = hours * float(rate_inp.text)
     total_lbl.text = f'Total pay: ${total_pay:.2f}'
+
+app = gp.GooeyPieApp('Pay Calculator')
+app.width = 300
 
 date_lbl = gp.Label(app, 'Date')
 date_inp = gp.Input(app)
