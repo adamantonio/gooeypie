@@ -1,4 +1,3 @@
-import tkinter
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
@@ -16,7 +15,6 @@ if platform.system() == 'Darwin':
 
 try:
     from PIL import Image as PILImage, ImageTk
-
     PILLOW = True
 except ImportError:
     PILImage = ImageTk = None
@@ -57,7 +55,7 @@ class GooeyPieEvent:
         # The menu path if a menu event was triggered
         self.menu = menu
 
-    def __repr__(self):
+    def __str__(self):
         return str({
             'event_name': self.event_name,
             'widget': self.widget,
@@ -65,6 +63,9 @@ class GooeyPieEvent:
             'key': self.key,
             'menu': self.menu
         })
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class GooeyPieWidget:
@@ -153,7 +154,7 @@ class GooeyPieWidget:
 
         # Check that the event function specified accepts a single argument
         if callback.__code__.co_argcount != 1:
-            raise GooeyPieError(f"Your event function '{callback.__name__}' must accept a single argument")
+            raise GooeyPieError(f"The event function '{callback.__name__}' must accept a single argument")
 
         # Hyperlinks have default events for mouse_down (activating the link)
         # and mouse_over (showing a hand icon)
@@ -202,9 +203,6 @@ class GooeyPieWidget:
                 self._observer = self._value.trace('w', partial(self._text_change_event, event_name))
 
             if isinstance(self, Textbox):
-                # TODO: change event for the textbox is complicated - will need to add a 'sentinel' to the Textbox widget
-                # http://webcache.googleusercontent.com/search?q=cache:KpbCmAzvn_cJ:code.activestate.com/recipes/464635-call-a-callback-when-a-tkintertext-is-modified/+&cd=2&hl=en&ct=clnk&gl=au
-                # self.bind('<<Modified>>', partial(self._event, event_name))
                 self.bind('<KeyRelease>', partial(self._textbox_change_event, event_name))
 
         if event_name == 'press':
@@ -320,11 +318,6 @@ class GooeyPieWidget:
             state = ['disabled'] if self._disabled else ['!disabled']
             self.state(state)
 
-    # TESTING: Retrieve all grid settings
-    def get_info(self):
-        return self.grid_info()
-        # Sample output: Grid info: {'in': <guilite.GuiLiteApp object .!guiliteapp>, 'column': 1, 'row': 1, 'columnspan': 1, 'rowspan': 1, 'ipadx': 0, 'ipady': 0, 'padx': (0, 10), 'pady': (0, 10), 'sticky': 'nw'}
-
     @property
     def margin_top(self):
         return self.margins[0]
@@ -385,6 +378,9 @@ class Label(ttk.Label, GooeyPieWidget):
 
     def __str__(self):
         return f"<Label '{self.text}'>"
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def text(self):
@@ -482,9 +478,15 @@ class Button(ttk.Button, GooeyPieWidget):
     def __str__(self):
         return f"<Button '{self.text}'>"
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def width(self):
         return self.cget('width')
+
+    def __repr__(self):
+        return self.__str__()
 
     @width.setter
     def width(self, value):
@@ -497,10 +499,6 @@ class Button(ttk.Button, GooeyPieWidget):
     @text.setter
     def text(self, text):
         self.configure(text=text)
-
-    # TESTING #
-    def info(self):
-        return self.grid_info()
 
 
 class Slider(ttk.Scale, GooeyPieWidget):
@@ -525,6 +523,9 @@ class Slider(ttk.Scale, GooeyPieWidget):
 
     def __str__(self):
         return f'<Slider from {self.cget("from")} to {self.cget("to")}>'
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def value(self):
@@ -556,6 +557,9 @@ class StyleLabel(Label):
 
     def __str__(self):
         return f"<StyleLabel '{self.text}'>"
+
+    def __repr__(self):
+        return self.__str__()
 
     def _get_current_font(self):
         """Returns a dictionary representing the current font"""
@@ -759,6 +763,9 @@ class Hyperlink(StyleLabel):
     def __str__(self):
         return f"<Hyperlink '{self.text}'>"
 
+    def __repr__(self):
+        return self.__str__()
+
     def _open_link(self, e):
         if not self.disabled:
             import webbrowser
@@ -773,26 +780,27 @@ class Image(Label):
     def __str__(self):
         return f"""<Image '{self.image}'>"""
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def image(self):
         return self._image
 
     @image.setter
-    def image(self, image):
-        image_extension = image[-3:]
+    def image(self, image_path):
+        image_extension = image_path[-3:]
         if not PILLOW and image_extension != 'gif':
             raise ValueError('Only gif images can be used at this time.')
 
-        self._image = image
+        self._image = image_path
 
         if not PILLOW:
-            self._tk_image = tk.PhotoImage(file=image)
+            self._tk_image = tk.PhotoImage(file=image_path)
         else:
-            self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
+            self._tk_image = ImageTk.PhotoImage(PILImage.open(image_path))
 
         self.configure(image=self._tk_image)
-
-    # TODO: Overwrite the text setter to raise an error?
 
 
 class Input(ttk.Entry, GooeyPieWidget):
@@ -805,6 +813,9 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     def __str__(self):
         return f"""<Input widget>"""
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def width(self):
@@ -860,6 +871,9 @@ class Secret(Input):
     def __str__(self):
         return f"""<Secret widget>"""
 
+    def __repr__(self):
+        return self.__str__()
+
     def unmask(self):
         self.configure(show='')
 
@@ -893,6 +907,9 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     def __str__(self):
         return f'<Listbox {tuple(self.items)}>'
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def height(self):
@@ -1248,11 +1265,11 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
         self.bind('<Control-Tab>', self.insert_tab)
         self._events['change'] = None
 
-    # TODO: readonly option
-    # https://stackoverflow.com/questions/3842155/is-there-a-way-to-make-the-tkinter-text-widget-read-only
-
     def __str__(self):
         return f"""<Textbox object>"""
+
+    def __repr__(self):
+        return self.__str__()
 
     @staticmethod
     def focus_next_widget(event):
@@ -1344,6 +1361,9 @@ class ImageButton(Button):
     def __str__(self):
         return f"""<ImageButton '{self._image}'>"""
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def image_position(self):
         return self.cget('compound')
@@ -1364,6 +1384,9 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 
     def __str__(self):
         return f'''<Checkbox '{self.cget("text")}'>'''
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def checked(self):
@@ -1418,7 +1441,6 @@ class RadiogroupBase(GooeyPieWidget):
             if isinstance(self, LabelRadiogroup):
                 margins = ['auto'] * 4
                 # For vertically aligned radiogroups, reduce the vertical spacing between items.
-
                 if orient == 'vertical':
                     if pos != length - 1:
                         margins[2] = 0
@@ -1463,6 +1485,9 @@ class Radiogroup(Container, RadiogroupBase):
     def __str__(self):
         return f'<Radiogroup {tuple(self.options)}>'
 
+    def __repr__(self):
+        return self.__str__()
+
 
 class LabelRadiogroup(LabelContainer, RadiogroupBase):
     """A set of radio buttons in a label frame"""
@@ -1474,60 +1499,8 @@ class LabelRadiogroup(LabelContainer, RadiogroupBase):
     def __str__(self):
         return f'<LabelRadiogroup {tuple(self.options)}>'
 
-
-class OldRadiogroupBase(GooeyPieWidget):
-    """Base class used by Radiogroup and LabelledRadiogroup"""
-
-    def __init__(self, container, choices, orient):
-        GooeyPieWidget.__init__(self, container)
-        self._events['change'] = None  # Radiobuttons support the 'change' event
-        self._selected = tk.StringVar()
-
-        # If images are used (to be implemented, need to support passing a list of 2-tuples,
-        # where first item is the image, second is the value returned
-
-        if isinstance(choices, (list, tuple)):
-            side = 'left' if orient == 'horizontal' else 'top'
-            for choice in choices:
-                radiobutton = ttk.Radiobutton(self, text=choice, variable=self._selected, value=choice)
-                radiobutton.pack(expand=True, fill='x', padx=8, pady=8, side=side)
-
-    @property
-    def options(self):
-        return tuple(widget.cget('text') for widget in self.winfo_children())
-
-    @property
-    def selected(self):
-        if self._selected.get():
-            return self._selected.get()
-        else:
-            return None
-
-    @selected.setter
-    def selected(self, value):
-        self._selected.set(value)
-
-
-class OldRadiogroup(ttk.Frame, RadiogroupBase):
-    """A set of radio buttons"""
-
-    def __init__(self, container, choices, orient='vertical'):
-        ttk.Frame.__init__(self, container)
-        RadiogroupBase.__init__(self, container, choices, orient)
-
-    def __str__(self):
-        return f'<Radiogroup {tuple(self.options)}>'
-
-
-class OldLabelRadiogroup(ttk.LabelFrame, RadiogroupBase):
-    """A set of radio buttons in a label frame"""
-
-    def __init__(self, container, title, choices, orient='vertical'):
-        ttk.LabelFrame.__init__(self, container, text=title)
-        RadiogroupBase.__init__(self, container, choices, orient)
-
-    def __str__(self):
-        return f'<LabelRadiogroup {tuple(self.options)}>'
+    def __repr__(self):
+        return self.__str__()
 
 
 class Dropdown(ttk.Combobox, GooeyPieWidget):
@@ -1537,13 +1510,11 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
         self.state(['readonly'])
         self._events['select'] = None
 
-        # DONE TODO 1: change choices to items
-        # DONE TODO 2: need to write getters and setters for choices - at the moment nothing actually changes...
-        # TODO 3: update docs
-        # TODO 4: write a better testing widget
-
     def __str__(self):
         return f'<Dropdown {tuple(self.items)}>'
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def items(self):
@@ -1614,6 +1585,9 @@ class Number(ttk.Spinbox, GooeyPieWidget):
         low = type(self.cget("increment"))(self.cget("from"))  # format low and high with appropriate type
         high = type(self.cget("increment"))(self.cget("to"))
         return f'<Number widget from {low} to {high}>'
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def value(self):
@@ -1755,6 +1729,9 @@ class Table(Container, GooeyPieWidget):
     def __str__(self):
         # Identified by column names
         return f"<Table {tuple([self._treeview.heading(col_id)['text'] for col_id in range(self._num_columns)])}>"
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def height(self):

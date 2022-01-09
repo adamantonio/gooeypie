@@ -9,7 +9,7 @@ DEBUG = 0
 
 
 class ContainerBase(ttk.Frame, ttk.LabelFrame):
-    """Abstract base class for Container and LabelContainer classes - provides functions for layout"""
+    """Base class for Container and LabelContainer classes - provides functions for layout"""
 
     spacing = {
         'window_padding': 0,
@@ -112,12 +112,10 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         self.margins[3] = value
 
     def set_grid(self, rows, columns):
+        """Sets the grid for the layout of all widgets, rows and columns indexed from 1
+        The grid must be set before widgets can be added, all widgets must have a location specified.
         """
-        Sets the grid for the layout of all widgets, rows and columns indexed from 1
-        The layout manager is unforgiving: the grid must be set before
-        widgets can be added, all widgets must have a location specified.
-        """
-        # Initialise the grids with None's
+        # Initialise the grids with None
         self._grid = [[None for i in range(columns)] for j in range(rows)]
 
         # Set each column of the grid to stretch evenly when the window resizes
@@ -196,7 +194,7 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
             widget.grid(padx=padx, pady=pady, sticky=sticky,
                         row=row-1, column=column-1, columnspan=column_span, rowspan=row_span)
 
-        except ValueError:
+        except TypeError:
             raise GooeyPieError('The set_grid(rows, columns) function must be called before adding widgets')
 
         except IndexError:
@@ -241,6 +239,12 @@ class Container(ContainerBase):
         else:
             ttk.Frame.__init__(self, master)
 
+    def __str__(self):
+        return f"<Container widget>"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class LabelContainer(ContainerBase):
     """Labeled frame that other widgets can be placed in"""
@@ -258,3 +262,8 @@ class LabelContainer(ContainerBase):
         else:
             ttk.LabelFrame.__init__(self, master, text=text)
 
+    def __str__(self):
+        return f"<LabelContainer \'{self.cget('text')}\'>"
+
+    def __repr__(self):
+        return self.__str__()
