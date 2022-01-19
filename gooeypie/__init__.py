@@ -10,8 +10,7 @@ __version__ = "0.3.0"
 
 
 class WindowBase(Container):
-    """
-    Base class for GooeyPieApp and Window classes
+    """Base class for GooeyPieApp and Window classes
     Provides functions for window options like size, title and menus
     """
     def __init__(self, root, title, *args):
@@ -531,6 +530,7 @@ class Window(WindowBase):
 class GooeyPieApp(WindowBase):
     """The main application window"""
     def __init__(self, title):
+        """Creates the application object, and main window with the specified title"""
         WindowBase.__init__(self, tk.Tk(), title)
 
     def __str__(self):
