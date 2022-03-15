@@ -1,6 +1,5 @@
 import tkinter
 from tkinter import messagebox
-from PIL import Image as PILImage, ImageTk
 
 from .widgets import *
 from .containers import *
@@ -14,6 +13,8 @@ class WindowBase(Container):
     Provides functions for window options like size, title and menus
     """
     def __init__(self, root, title, *args):
+        """Creates the base window object"""
+
         self._root = root   # for the class GooeyPieApp, this is the tkinter.Tk() instance
         self._root.title(title)  # title of the window
 
@@ -44,7 +45,7 @@ class WindowBase(Container):
         # Add the main Container to the window
         self.pack(fill='both', expand=True, padx=0, pady=0)
 
-        # Call update to get width and height info, then set the min size to these values
+        # Call update() to get width and height info, then set the min size to these values
         # Prevents window resizing covering up the widgets.
         self._root.update_idletasks()
         min_width = self._root.winfo_width()
@@ -68,6 +69,7 @@ class WindowBase(Container):
 
     @property
     def title(self):
+        """Get or set the title of the window"""
         return self._root.title()
 
     @title.setter
@@ -75,15 +77,26 @@ class WindowBase(Container):
         self._root.title(text)
 
     def set_size(self, width, height):
+        """Sets the size of the window
+
+        Args:
+            width (int): The width of the window in pixels
+            height (int): The height of the window in pixels
+
+        """
         self._preferred_size = [width, height]
 
     @property
     def width(self):
+        """Gets or sets the preferred width of the window.
+
+        The actual width might be wider than the set value in order to fit all widgets
+        """
+
         return self._root.winfo_width()
 
     @width.setter
     def width(self, value):
-        """Sets the preferred width of the window. Actual width might be wider to fit in all widgets"""
         if value == 'auto':
             value = 0
 
@@ -101,7 +114,9 @@ class WindowBase(Container):
 
     @height.setter
     def height(self, value):
-        """Sets the preferred height of the window. Actual height might be wider to fit in all widgets"""
+        """Gets or sets the preferred height of the window. The actual height might be taller than the set value
+        in order to fit all widgets
+        """
         if value == 'auto':
             value = 0
 
@@ -119,7 +134,7 @@ class WindowBase(Container):
 
     def _create_menu(self, menu_path, parent):
         """Creates a tk menu object if it does not exist and adds it to the internal dictionary of menu objects
-        menu_path is either the name of a top level menu or a tuple (top_level_name, sub_menu_name)
+        menu_path is either the name of a top level menu (string) or a tuple (top_level_name, sub_menu_name)
         parent is either self._menubar (root menu) or the parent menu for submenus
         """
 
@@ -159,7 +174,8 @@ class WindowBase(Container):
             else:
                 item_path = menu_path + (item,)
             # self._menu[menu_path].entryconfigure(current, command=partial(callback, item_path))
-            self._menu[menu_path].entryconfigure(current, command=partial(self._menu_select_callback, item_path, callback))
+            self._menu[menu_path].entryconfigure(current, command=partial(self._menu_select_callback,
+                                                                          item_path, callback))
 
     def _create_menu_radios(self, menu_path, options, callback):
         """Creates a group of radio button menu items in either a top level menu or a submenu"""
@@ -197,11 +213,9 @@ class WindowBase(Container):
         if type(menu_path) == str:
             # If the radio item is in a top level menu - e.g. ('Font', 'Bold')
             menu_str = (menu_path, selected_option)
-            # callback((menu_path, selected_option))
         else:
             # If the radio item is in a submenu - e.g. ('Format', 'Font', 'Bold')
             menu_str = (menu_path[0], menu_path[1], selected_option)
-            # callback((menu_path[0], menu_path[1], selected_option))
 
         event = GooeyPieEvent('menu', self, menu=menu_str)
         callback(event)
@@ -220,156 +234,431 @@ class WindowBase(Container):
 
         if callback is not None:
             assert callback.__code__.co_argcount == 1
-            self._menu[menu_path].entryconfigure(self._menu[menu_path].index('end'), command=partial(self._menu_select_callback, item_path, callback))
+            self._menu[menu_path].entryconfigure(self._menu[menu_path].index('end'),
+                                                 command=partial(self._menu_select_callback, item_path, callback))
 
     def _change_menu_state(self, menu_path, item, state):
-        """Change
-
-        menu: string or tuple representing menu or (menu, submenu)
-        item: string
-        state: string
-        """
+        """Enables or disables a menu item"""
         try:
             menu = self._menu[menu_path]
-
             max_index = menu.index('end')
             # find the menu item
-            for i in range(max_index + 1):
-                if menu.type(i) != 'separator' and menu.entrycget(i, 'label') == item:
-                    index = i
+            for menu_index in range(max_index + 1):
+                if menu.type(menu_index) != 'separator' and menu.entrycget(menu_index, 'label') == item:
+                    index = menu_index
             menu.entryconfigure(index, state=state)
         except NameError:
-            raise NameError(f"The menu item could not be found")
+            raise ValueError(f"The menu item could not be found")
         except KeyError:
-            raise KeyError(f"The menu could not be found")
+            raise ValueError(f"The menu could not be found")
 
-    def add_menu_item(self, menu, item, callback):
-        """Adds a menu command to the window"""
+    def add_menu_item(self, menu, item, event_function):
+        """Adds a menu item to the window to a top level menu
+
+        Args:
+            menu (str): The top level menu name
+            item (str): The menu item
+            event_function (function): The function to call when the menu item is selected (must accept a
+                single argument)
+        """
         self._create_menu(menu, self._menubar)
-        self._create_menu_item(menu, item, callback)
+        self._create_menu_item(menu, item, event_function)
 
-    def add_submenu_item(self, menu, submenu, item, callback):
-        """Create a submenu 'item' with name 'submenu' under 'menu'"""
-        self._create_menu(menu, self._menubar)
-        self._create_menu((menu, submenu), self._menu[menu])
-        self._create_menu_item((menu, submenu), item, callback)
+    def add_submenu_item(self, menu, submenu, item, event_function):
+        """Adds a menu item to the window to a submenu
 
-    def add_menu_radios(self, menu, options, callback):
-        """Add a group of radio button menu items to a top level menu"""
-        self._create_menu(menu, self._menubar)
-        self._create_menu_radios(menu, options, callback)
-
-    def add_submenu_radios(self, menu, submenu, options, callback):
-        """Add a group of radio button menu items to a submenu"""
-        self._create_menu(menu, self._menubar)
-        self._create_menu((menu, submenu), self._menu[menu])
-        self._create_menu_radios((menu, submenu), options, callback)
-
-    def add_menu_checkbox(self, menu, item, callback, checked=False):
-        self._create_menu(menu, self._menubar)
-        self._create_menu_checkbutton(menu, item, callback, checked)
-
-    def add_submenu_checkbox(self, menu, submenu, item, callback, checked=False):
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            item (str): menu item under menu -> submenu
+            event_function (function): The function to call when the menu item is selected (must accept a
+                single argument)
+        """
         self._create_menu(menu, self._menubar)
         self._create_menu((menu, submenu), self._menu[menu])
-        self._create_menu_checkbutton((menu, submenu), item, callback, checked)
+        self._create_menu_item((menu, submenu), item, event_function)
 
-    def add_menu_separator(self, *path):
-        """Adds a separator to the given path"""
-        assert(len(path) == 1 or len(path) == 2)
-        menu_path = path[0] if len(path) == 1 else path
-        self._menu[menu_path].add_separator()
+    def add_menu_radios(self, menu, options, event_function):
+        """Adds a group of radio menu items to a top level menu
 
-    # Alias the add_menu_separator for consistency
-    add_submenu_separator = add_menu_separator
+        A menu radio group always has one item checked. If another item in the group is selected, it becomes checked
+        and the previously checked item becomes unchecked.
+
+         Args:
+            menu (str): The top level menu name
+            options (list): A list of the menu items that will act as a group. By default, the first item
+                will be checked.
+            event_function (function): The event function to call when any of the options are selected (The current
+                selection does not have to change for the event function to fire).
+        """
+        self._create_menu(menu, self._menubar)
+        self._create_menu_radios(menu, options, event_function)
+
+    def add_submenu_radios(self, menu, submenu, options, event_function):
+        """Add a group of radio menu items to a submenu
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            options (list): A list of the menu items that will act as a group. By default, the first item
+                will be checked.
+            event_function (function): The event function to call when any of the options are selected (The current
+                selection does not have to change for the event function to fire).
+        """
+        self._create_menu(menu, self._menubar)
+        self._create_menu((menu, submenu), self._menu[menu])
+        self._create_menu_radios((menu, submenu), options, event_function)
+
+    def add_menu_checkbox(self, menu, item, event_function, checked=False):
+        """Adds a checkbox menu item to a top level menu
+
+        A checkbox menu item can have a check mark next to it indicating that it is checked. Selecting a checkbox
+        menu item toggles its state between checked and unchecked
+
+        Args:
+            menu (str): The top level menu name
+            item (str): The name of the checkbox menu item
+            event_function (function): The event function to call when any of the options are selected (The current
+                selection does not have to change for the event function to fire).
+            checked (bool): Whether the item is initially checked or not
+        """
+        self._create_menu(menu, self._menubar)
+        self._create_menu_checkbutton(menu, item, event_function, checked)
+
+    def add_submenu_checkbox(self, menu, submenu, item, event_function, checked=False):
+        """Adds a checkbox menu item to a submenu
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            item (str): The name of menu item
+            event_function (function): The event function to call when any of the options are selected (The current
+                selection does not have to change for the event function to fire).
+            checked (bool): Whether the item is initially checked or not
+        """
+        self._create_menu(menu, self._menubar)
+        self._create_menu((menu, submenu), self._menu[menu])
+        self._create_menu_checkbutton((menu, submenu), item, event_function, checked)
+
+    def add_menu_separator(self, menu):
+        """Adds a separator to a menu
+
+        Args:
+            menu (str): The top level menu name
+
+        Raises:
+            ValueError: The top level menu does not exist
+        """
+        if menu not in self._menu:
+            raise ValueError(f"No top level menu '{menu}' found")
+        self._menu[menu].add_separator()
+
+    def add_submenu_separator(self, menu, submenu):
+        """Adds a separator to a submenu
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+
+        Raises:
+            ValueError: The menu path (menu -> submenu) does not exist
+        """
+        if (menu, submenu) not in self._menu:
+            raise ValueError(f"No submenu '{submenu}' found under menu '{menu}' found")
+        self._menu[(menu, submenu)].add_separator()
 
     def disable_menu_item(self, menu, item):
-        """Disable the given item under the specified menu"""
+        """Disables a menu item
+
+        Args:
+            menu (str): The top level menu name
+            item (str): The name of the menu item
+        """
         self._change_menu_state(menu, item, 'disabled')
 
     def enable_menu_item(self, menu, item):
-        """Enables the specified item under menu. Has no effect if the item is already enabled"""
+        """Enables a menu item
+
+        Args:
+            menu (str): The top level menu name
+            item (str): The name of the menu item
+        """
         self._change_menu_state(menu, item, 'normal')
 
     def disable_submenu_item(self, menu, submenu, item):
-        """Disable the item under the specified menu, submenu"""
+        """Disables a submenu item
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            item (str): The name of the menu item
+        """
         self._change_menu_state((menu, submenu), item, 'disabled')
 
     def enable_submenu_item(self, menu, submenu, item):
-        """Enable the item under the specified menu, submenu"""
+        """Enables a submenu item
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            item (str): The name of the menu item
+        """
         self._change_menu_state((menu, submenu), item, 'normal')
 
     def set_menu_radio(self, menu, options, item):
-        """"""
+        """Selects a particular item in a group of radio menu items
+
+        Args:
+            menu (str): The top level menu name
+            options (list): The list of all the radio menu items
+            item (str): The item in options to set as the selected item
+
+        Raises:
+            ValueError: The radio menu radio items do not exist
+            ValueError: The item is not one of the options
+        """
         control_var_key = (menu,) + tuple(options)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find radio menu items {options} in '{menu}'")
+        if item not in options:
+            raise ValueError(f"'{item}' must be one of {options}")
+
         self._menu_tkcontrols[control_var_key].set(item)
 
     def set_submenu_radio(self, menu, submenu, options, item):
+        """Selects a particular item in a group of radio menu items in a submenu
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            options (list): The list of all the radio menu items
+            item (str): The item in options to set as the selected item
+
+        Raises:
+            ValueError: The radio menu radio items do not exist
+            ValueError: The item is not one of the options
+        """
         control_var_key = (menu, submenu) + tuple(options)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find radio menu items {options} in '{menu}' -> '{submenu}'")
+        if item not in options:
+            raise ValueError(f"'{item}' must be one of {options}")
+
         self._menu_tkcontrols[control_var_key].set(item)
 
     def get_menu_radio(self, menu, options):
-        """"""
+        """Returns the selected radio menu item under a top level menu
+
+        Args:
+            menu (str): The top level menu name
+            options (list): The list of all the radio menu items
+
+        Returns:
+            str: The menu item in options that is currently selected
+
+        Raises:
+            ValueError: The options do not exist as a radio menu group under menu
+        """
         control_var_key = (menu,) + tuple(options)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find radio menu items {options} in '{menu}'")
+
         return self._menu_tkcontrols[control_var_key].get()
 
     def get_submenu_radio(self, menu, submenu, options):
-        """"""
+        """Returns the selected radio menu item under a submenu
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            options (list): The list of all the radio menu items
+
+        Returns:
+            str: The menu item in options that is currently selected
+
+        Raises:
+            ValueError: The options do not exist as a radio menu group under menu -> submenu
+        """
         control_var_key = (menu, submenu) + tuple(options)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find radio menu items {options} in '{menu}' -> '{submenu}'")
+
         return self._menu_tkcontrols[control_var_key].get()
 
     def get_menu_checkbox(self, menu, item):
-        """Returns the state of the menu checkbutton"""
-        return self._menu_tkcontrols[(menu, item)].get()
+        """Returns the state of a checkbox menu item under a top level menu
+
+        Args:
+            menu (str): The top level menu name
+            item (str): The item in menu to
+
+        Returns:
+            bool: The state of the checkbox
+
+        Raises:
+            ValueError: The item does not exist as a checkbox menu item under menu
+        """
+        control_var_key = (menu, item)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find checkbox item '{item}' in '{menu}'")
+
+        return self._menu_tkcontrols[control_var_key].get()
 
     def set_menu_checkbox(self, menu, item, state):
-        """Sets the state of the menu checkbutton"""
-        self._menu_tkcontrols[(menu, item)].set(state)
+        """Set the state of a checkbox menu item under a top level menu
+
+        Args:
+            menu (str): The top level menu name
+            item (str): The item in menu to
+            state (bool): The state of the checkbox
+
+        Raises:
+            ValueError: The item does not exist as a checkbox menu item under menu
+        """
+        control_var_key = (menu, item)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find checkbox item '{item}' in '{menu}'")
+
+        self._menu_tkcontrols[control_var_key].set(bool(state))
 
     def get_submenu_checkbox(self, menu, submenu, item):
-        """Returns the state of the menu checkbutton"""
-        return self._menu_tkcontrols[(menu, submenu, item)].get()
+        """Returns the state of a checkbox menu item under a submenu
+
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            item (str): The item in menu to
+
+        Returns:
+            bool: The state of the checkbox
+
+        Raises:
+            ValueError: The item does not exist as a checkbox menu item under menu
+        """
+        control_var_key = (menu, submenu, item)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find checkbox menu item '{item}' in '{menu}' -> '{submenu}'")
+
+        return self._menu_tkcontrols[control_var_key].get()
 
     def set_submenu_checkbox(self, menu, submenu, item, state):
-        """Sets the state of the menu checkbutton"""
-        self._menu_tkcontrols[(menu, submenu, item)].set(state)
+        """Set the state of a checkbox menu item under a submenu
 
-    def on_close(self, callback):
-        """Registers a function to be called when the window is closed"""
-        if not callable(callback):
-            raise GooeyPieError('The argument to the on_close method must be the name of a function')
-        self._on_close_callback = callback
+        Args:
+            menu (str): The top level menu name
+            submenu (str): The name of the submenu under menu
+            item (str): The item in menu to
+            state (bool): The state of the checkbox
 
-    def alert(self, title, message, icon):
-        """Alerts have a single 'OK' button and do not return a value"""
+        Raises:
+            ValueError: The item does not exist as a checkbox menu item under menu -> submenu
+        """
+        control_var_key = (menu, submenu, item)
+        if control_var_key not in self._menu_tkcontrols:
+            raise ValueError(f"Could not find checkbox menu item '{item}' in '{menu}' -> '{submenu}'")
+
+        self._menu_tkcontrols[control_var_key].set(bool(state))
+
+    def on_close(self, close_function):
+        """Registers a function to be called when the window is closed
+
+        Args:
+            close_function (function): The function called when the user closes the window. This function must
+                return a boolean value to confirm exit. If the function returns False, the window will not close.
+
+        """
+        if not callable(close_function):
+            raise TypeError('The argument to the on_close method must be a function')
+        self._on_close_callback = close_function
+
+    @staticmethod
+    def _check_icon(icon):
+        if icon not in ('info', 'question', 'warning', 'error'):
+            raise ValueError("The icon for the confirm popup must be one of 'info', 'question', 'warning' or 'error'")
+
+    def alert(self, title, message, icon='info'):
+        """Launches an alert popup window
+
+        Alert popups display a message with a single 'OK' button. No value is returned when the user dismisses
+        the message
+
+        Args:
+            title (str): The text on the title bar of the alert window
+            message (str): The text on the alert window
+            icon (str): The type of alert - one of 'error', 'warning', 'question', 'info'. Depending on the OS,
+                an icon corresponding to the type of alert is shown on the alert.
+        """
+        self._check_icon(icon)
         if icon == 'error':
             messagebox.showerror(title, message, parent=self._root, icon='error')
         elif icon == 'warning':
             messagebox.showwarning(title, message, parent=self._root, icon='warning')
         elif icon == 'question':
             messagebox.showinfo(title, message, parent=self._root, icon='question')
-        else:
+        elif icon == 'info':
             messagebox.showinfo(title, message, parent=self._root, icon='info')
 
-    # Confirmation dialogs return a value
-    @staticmethod
-    def _check_icon(icon):
-        if icon not in ('info', 'question', 'warning', 'error'):
-            raise GooeyPieError("The icon for the confirm popup must be one of 'info', 'question', 'warning' or 'error'")
-
     def confirm_okcancel(self, title, message, icon):
+        """Launches a confirm popup with buttons 'OK' and 'Cancel'
+
+        Args:
+            title (str): The text on the title bar of the popup window
+            message (str): The text on the confirm popup
+            icon(str): The icon to show on the confirm popup (OS-dependent). Must be one of 'error', 'warning',
+                'question', 'info'
+
+        Returns:
+            bool: True if 'OK' was selected, False if 'Cancel' was selected or the window was dismissed with ESC
+                or the close button
+        """
         self._check_icon(icon)
         return messagebox.askokcancel(title, message, parent=self._root, icon=icon)
 
     def confirm_yesno(self, title, message, icon):
+        """Launches a confirm popup with buttons 'Yes' and 'No'
+
+        Args:
+            title (str): The text on the title bar of the popup window
+            message (str): The text on the confirm popup
+            icon(str): The icon to show on the confirm popup (OS-dependent). Must be one of 'error', 'warning',
+                'question', 'info'
+
+        Returns:
+            bool: True if 'Yes' was selected, False if 'No' was selected or the window was dismissed with ESC
+                or the close button
+        """
         self._check_icon(icon)
         return messagebox.askyesno(title, message, parent=self._root, icon=icon)
 
     def confirm_retrycancel(self, title, message, icon):
+        """Launches a confirm popup with buttons 'Retry' and 'Cancel'
+
+        Args:
+            title (str): The text on the title bar of the popup window
+            message (str): The text on the confirm popup
+            icon(str): The icon to show on the confirm popup (OS-dependent). Must be one of 'error', 'warning',
+                'question', 'info'
+
+        Returns:
+            bool: True if 'Retry' was selected, False if 'Cancel' was selected or the window was dismissed with ESC
+                or the close button
+        """
         self._check_icon(icon)
         return messagebox.askretrycancel(title, message, parent=self._root, icon=icon)
 
     def confirm_yesnocancel(self, title, message, icon):
+        """Launches a confirm popup with buttons 'Yes', 'No' and 'Cancel'
+
+        Args:
+            title (str): The text on the title bar of the popup window
+            message (str): The text on the confirm popup
+            icon(str): The icon to show on the confirm popup (OS-dependent). Must be one of 'error', 'warning',
+                'question', 'info'
+
+        Returns:
+            bool: True if 'OK' was selected, False if 'No' was selected, and None if either 'Cancel' was selected
+                or the window was dismissed with ESC or the close button
+        """
         self._check_icon(icon)
         return messagebox.askyesnocancel(title, message, parent=self._root, icon=icon)
 
@@ -381,21 +670,43 @@ class WindowBase(Container):
             if self._interval_callback:
                 self._root.after(self._interval_callback['delay'], self._trigger_interval_callback)
 
-    def set_interval(self, delay, callback):
-        """Sets up the callback function to execute every delay milliseconds"""
+    def set_interval(self, delay, interval_function):
+        """Sets a function to repeatedly execute
+
+        Args:
+            delay (int): The frequency with which to call the interval function, in milliseconds
+            interval_function (function): The function to call every 'delay' milliseconds
+
+        Raises:
+            TypeError: If the interval_function is not a callable function
+        """
+        if not callable(interval_function):
+            raise TypeError('The second argument to set_interval must be a function')
+
         self._interval_callback = {
             'delay': delay,
-            'function': callback
+            'function': interval_function
         }
         self._root.after(delay, self._trigger_interval_callback)
 
     def clear_interval(self):
-        """Stops the set_interval callback"""
+        """Clears the set_interval function"""
         self._interval_callback = None
 
-    def set_timeout(self, delay, callback):
-        """Execute the given callback function one time after delay milliseconds"""
-        self._timeout = self._root.after(delay, callback)
+    def set_timeout(self, delay, timeout_function):
+        """Sets a function to execute once after a given delay
+
+        Args:
+            delay (int): The frequency with which to call the interval function, in milliseconds
+            timeout_function (function): The function to call every 'delay' milliseconds
+
+        Raises:
+            TypeError: If the interval_function is not a callable function
+        """
+        if not callable(timeout_function):
+            raise TypeError('The second argument to set_timeout must be a function')
+
+        self._timeout = self._root.after(delay, timeout_function)
 
     def clear_timeout(self):
         """Clears a timeout function if it exists"""
@@ -404,11 +715,25 @@ class WindowBase(Container):
 
 
 class FileWindow:
-    """Base class for opening files and folders"""
+    """Abstract base class for opening files and folders
+
+    Inherited by OpenSaveFileWindow
+    """
     def __init__(self, parent, title):
+        """Creates a new FileWindow with the given parent window and title"""
         self._options = {'master': parent, 'title': title}
 
     def set_initial_folder(self, folder_name, *paths):
+        """Sets an initial named folder that the FileWindow will open to
+
+        The initial folder name is a common name used across operating systems, corresponding to either the location of
+        the currently running app, or the user's home directory, documents directory or desktop.
+
+        Args:
+            folder_name (str): the named folder where the window will initially open to. Must be one of 'home',
+                'documents', 'desktop' or 'app'
+            *paths: additional subfolders under the initial folder
+        """
         folder_name = folder_name.lower()
         if folder_name not in ('home', 'documents', 'desktop', 'app'):
             raise GooeyPieError("Argument 'folder_name' must be one of 'home', 'documents', 'desktop' or 'app'")
@@ -427,6 +752,11 @@ class FileWindow:
 
     @property
     def initial_path(self):
+        """Gets or sets the full path of the location that the FileWindow will open to.
+
+        The path will vary by operating system - e.g. Windows fonts could be in 'C:\Windows\Fonts\', but the
+        equivalent in macOS is '"'/Library/Fonts'
+        """
         return self._options.get('initialdir', None)
 
     @initial_path.setter
@@ -435,14 +765,22 @@ class FileWindow:
 
 
 class OpenSaveFileWindow(FileWindow):
-    """Windows for opening and saving files
-    Base class for OpenFileWindow and SaveFileWindow
+    """Abstract base class for opening and saving file window
+
+    Inherited by OpenFileWindow and SaveFileWindow
     """
     def __init__(self, parent, title):
+        """Create a new Open or Save window with the given parent and title"""
         super().__init__(parent, title)
         self._options['filetypes'] = [('All files', '*.*')]
 
     def add_file_type(self, description, extension):
+        """Adds a new file type to be displayed as a filter when opening or saving files
+
+        Args:
+            description (str): A description of the file type(s)
+            extension (str): The file pattern(s) to filter, multiple types should be separated with a space
+        """
         if self._options['filetypes'] == [('All files', '*.*')]:
             # Replace the default "All files" file type if it is the only one.
             self._options['filetypes'] = [(description, extension)]
@@ -453,11 +791,18 @@ class OpenSaveFileWindow(FileWindow):
 class OpenFileWindow(OpenSaveFileWindow):
     """Open file dialog"""
     def __init__(self, parent, title):
+        """Creates a new Open File Window
+
+        Args:
+            parent (WindowBase): The window or app that will initiate the Open File Window
+            title (str): The title that appears on the Open File Window title bar
+        """
         super().__init__(parent, title)
         self._select_multiple_files = False
 
     @property
     def allow_multiple(self):
+        """Gets or sets whether to allow the user to select multiple files when the Open File Window is initiated"""
         return self._select_multiple_files
 
     @allow_multiple.setter
@@ -466,7 +811,10 @@ class OpenFileWindow(OpenSaveFileWindow):
 
     def open(self):
         """Launches the file open dialog and returns the selected and path filename(s),
-        Returns None if the user clicks cancel
+
+        Returns:
+            The filename as a string including the full path, or if multiple files are selected a list of all
+            path-filenames, or None if the user clicks cancel or otherwise dismisses the window
         """
         if self.allow_multiple:
             return filedialog.askopenfilenames(**self._options) or None
@@ -475,32 +823,59 @@ class OpenFileWindow(OpenSaveFileWindow):
 
 
 class SaveFileWindow(OpenSaveFileWindow):
+    """Save File window"""
     def __init__(self, parent, title):
+        """Creates a new Save File Window
+
+        Args:
+            parent (WindowBase): The window or app that will initiate the Open File Window
+            title (str): The title that appears on the Save File Window title bar
+        """
         super().__init__(parent, title)
 
     def open(self):
-        """Launches the file save dialog and returns the selected/entered filename(s),
-        The filename will include the extension added with add_file_type
-        Returns None if the user clicks cancel
+        """Launches the file save window
+
+        Returns:
+            The selected/entered filename(s) and its full path, including the extension added with add_file_type
+                Returns None if the user clicks cancel or otherwise dismisses the window
         """
 
-        # If default extension is not specified, no extension is added even when one is selected
+        # If the default extension is not specified, no extension is added even when one is selected
         return filedialog.asksaveasfilename(**self._options, defaultextension='') or None
 
 
 class OpenFolderWindow(FileWindow):
     """Allows a user to select a folder on their local system, returns the full path to the folder"""
     def __init__(self, parent, title):
+        """Creates a new Open Folder Window
+
+        Args:
+            parent (WindowBase): The window or app that will initiate the Open Folder Window
+            title (str): The title that appears on the Open Folder Window title bar
+        """
         super().__init__(parent, title)
 
     def open(self):
+        """Launches the Open Folder window
+
+        Returns:
+            The complete path to the selected folder as a string, or None if the user selects Cancel or otherwise
+                dismisses the window
+        """
         return filedialog.askdirectory(**self._options, mustexist=True) or None
 
 
 class Window(WindowBase):
-    """An additional window"""
-    def __init__(self, app, title):
-        WindowBase.__init__(self, tk.Toplevel(app), title)
+    """For creating windows in addition to the main window created with the call to GooeyPieApp"""
+    def __init__(self, parent, title):
+        """Creates a new window
+
+        Args:
+            parent (WindowBase): The parent window or application object
+            title (str): The text that appears in the title bar of the window
+        """
+        WindowBase.__init__(self, tk.Toplevel(parent), title)
         self._initialised = False
         self._default_close = self.hide  # By default, additional windows are hidden
         self.hide()
@@ -509,6 +884,7 @@ class Window(WindowBase):
         return f"<Window '{self.title}'>"
 
     def show(self):
+        """Makes the window visible"""
         self._root.deiconify()
         self._root.grab_release()
         if not self._initialised:
@@ -516,6 +892,7 @@ class Window(WindowBase):
             self._init_window()
 
     def show_on_top(self):
+        """Makes the window visible and prevents the user from interacting with the parent window"""
         self._root.deiconify()
         self._root.grab_set()
         if not self._initialised:
@@ -523,6 +900,7 @@ class Window(WindowBase):
             self._init_window()
 
     def hide(self):
+        """Hides the window"""
         self._root.withdraw()
         self._root.grab_release()
 
@@ -530,7 +908,12 @@ class Window(WindowBase):
 class GooeyPieApp(WindowBase):
     """The main application window"""
     def __init__(self, title):
-        """Creates the application object, and main window with the specified title"""
+        """Creates the application object and main window
+
+        Args:
+            title (str): The text that appears in the title bar of the main window
+
+        """
         WindowBase.__init__(self, tk.Tk(), title)
 
     def __str__(self):
@@ -540,12 +923,25 @@ class GooeyPieApp(WindowBase):
         return self.__str__()
 
     def _set_default_icon(self):
-        icon_data = """iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsSAAALEgHS3X78AAACUklEQVRYhc1XgbGCMAwNfwFwAtlAN4ANdANHkA1kA91AN9ANdAPdQDaAP0H+vZ7xQoFCVbz/7nqcQvNekzRpiZn1iJg5Z+aCP4/iYTvSnJo8ZeZqBGIb1YOrJiD9ArENIyKAS4ioIKKQenC73agoCvMUpGlK8/mcoijqm27jl4jiHyLKXORVVVGe5xTHsSHb7XaNd5PJxIg4HA4+AkLD7Uq47XbLYRhykiR8Pp+d/tzv9zydTs3o+1ahoK43q9XK11hNNAQNQasAkM9mMy7L0otccL1eB4toCFiv12+R2yL6PFgTIJPw/AQQDoTRtZiagMViwZvN5iPkAiQwhPQKuN/vTERvu97G8Xg0XugVAJXwwBhwhfVHqsLlcjGFZgzArq6eGk8BqGqoZmMAdlHCnQJ8sVwuB89w9gmJxZByq4Fa4cpuG13JXROAjB0KiEVyvbtrniFAnJCIQ4HEwsiy7DkDHTMIgkEDXbSWAzB2Op28MgGtGXMkw5EXYRhSWZb2Ua82kiRp5gDwSvdD5UT4+BFnhAX9xAXdqMg2huTyAUghXPIHhrEuVNY2YIH6faMbQoBvP5DDiLYhXrEhrV7QEODTyzVAKMJllfaugm38r223HkhEhM8+l20prkVf0V5BqNo803kkgwgY8ClQ+BYu5kd3hSB4Rci1QC2g81CKiTCAiVL5IEaKD4zhN7JeDqTa7XpuR0c0h9K8b2UgRNywOqwSccSQEzMEtFVR2SEQ0NGOc6+LyStAl+1oRs+LSYUiNgY5uTvh0nD/l8upjO9ez5npDxwrvxk2vF3PAAAAAElFTkSuQmCC"""
+        icon_data = """iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsSAAALEgHS3X78AAACUklEQVRYhc1XgbGCMA
+        wNfwFwAtlAN4ANdANHkA1kA91AN9ANdAPdQDaAP0H+vZ7xQoFCVbz/7nqcQvNekzRpiZn1iJg5Z+aCP4/iYTvSnJo8ZeZqBGIb1YOrJiD9ArE
+        NIyKAS4ioIKKQenC73agoCvMUpGlK8/mcoijqm27jl4jiHyLKXORVVVGe5xTHsSHb7XaNd5PJxIg4HA4+AkLD7Uq47XbLYRhykiR8Pp+d/tzv
+        9zydTs3o+1ahoK43q9XK11hNNAQNQasAkM9mMy7L0otccL1eB4toCFiv12+R2yL6PFgTIJPw/AQQDoTRtZiagMViwZvN5iPkAiQwhPQKuN/vT
+        ERvu97G8Xg0XugVAJXwwBhwhfVHqsLlcjGFZgzArq6eGk8BqGqoZmMAdlHCnQJ8sVwuB89w9gmJxZByq4Fa4cpuG13JXROAjB0KiEVyvbtrni
+        FAnJCIQ4HEwsiy7DkDHTMIgkEDXbSWAzB2Op28MgGtGXMkw5EXYRhSWZb2Ua82kiRp5gDwSvdD5UT4+BFnhAX9xAXdqMg2huTyAUghXPIHhrE
+        uVNY2YIH6faMbQoBvP5DDiLYhXrEhrV7QEODTyzVAKMJllfaugm38r223HkhEhM8+l20prkVf0V5BqNo803kkgwgY8ClQ+BYu5kd3hSB4Rci1
+        QC2g81CKiTCAiVL5IEaKD4zhN7JeDqTa7XpuR0c0h9K8b2UgRNywOqwSccSQEzMEtFVR2SEQ0NGOc6+LyStAl+1oRs+LSYUiNgY5uTvh0nD/l
+        8upjO9ez5npDxwrvxk2vF3PAAAAAElFTkSuQmCC"""
         icon = tkinter.PhotoImage(data=icon_data)
         self._root.iconphoto(True, icon)
 
     def set_icon(self, image_file):
-        """Sets the icon for all windows in the application"""
+        """Sets the icon for all windows in the application
+
+        Args:
+            image_file (str): The filename of the image to use as the window icon
+
+        """
         self._icon = image_file
 
         if image_file[-3:] == 'ico':
@@ -554,20 +950,37 @@ class GooeyPieApp(WindowBase):
             self._root.iconphoto(True, ImageTk.PhotoImage(PILImage.open(image_file)))
 
     def copy_to_clipboard(self, text):
-        """Copies the provided text to the OS clipboard"""
+        """Copies text to the OS clipboard
+
+        Args:
+            text (str): Copies text to the clipboard
+        """
         self.clipboard_clear()
         self.clipboard_append(text)
         self.update()  # now it stays on the clipboard after the window is closed
 
     def font_available(self, font_name):
-        """Returns true if font_name is installed on the system, case-insensitive"""
+        """Checks whether a particular font is installed on the computer
+
+        Args:
+            font_name (str): The font name to check for
+
+        Returns:
+            bool: Whether the given font_name exists on the users computer
+        """
         return font_name.lower() in [f.lower() for f in self.fonts()]
 
     def fonts(self):
-        """Returns a list of all system fonts"""
+        """Get all available system fonts
+
+        Returns:
+            list: All font names (as strings)
+
+        """
         return list(font.families(self))
 
     def exit(self):
+        """Closes all windows and exits the program"""
         self._root.destroy()
 
     def run(self):
