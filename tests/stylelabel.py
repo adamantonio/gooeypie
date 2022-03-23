@@ -252,6 +252,4 @@ bg_colour_dd.selected = choice(bg_colour_dd.items)
 style_lbl.colour = font_colour_dd.selected
 style_lbl.background_colour = bg_colour_dd.selected
 
-print(app.fonts())
-print(app.font_available('courier'))
 app.run()

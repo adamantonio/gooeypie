@@ -100,6 +100,7 @@ def remove_row(event):
     removed = table.remove_row(int(remove_row_inp.text))
     log.prepend_line(f'Removed {removed}')
 
+
 def clear_log(event):
     log.clear()
 

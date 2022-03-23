@@ -25,7 +25,17 @@ class GooeyPieEvent:
     """Event objects are passed to callback functions"""
 
     def __init__(self, event_name, gooeypie_widget, tk_event=None, menu=None):
-        """Creates a GooeyPie event object, passed to all callback functions"""
+        """Creates a GooeyPie event object
+
+        All event functions receive a GooeyPieEvent that includes details of the event name,
+        the widget that initiated the event, the mouse position and key pressed info
+
+        Args:
+            event_name (str): The name of the event
+            gooeypie_widget: The widget that initiates the event, or the window object for menu events
+            tk_event(tkinter.Event): The associated tkinter event object if applicable
+            menu(tuple): THe menu path of the generated event
+        """
         self.event_name = event_name
         self.widget = gooeypie_widget
 
@@ -71,7 +81,7 @@ class GooeyPieEvent:
 class GooeyPieWidget:
     """Base class for other GooeyPie widget classes, mostly for event handling"""
 
-    # Event names in GooeyPie matched with their corresponding tk events
+    # Event names in GooeyPie mapped to their corresponding tkinter events
     _tk_event_mappings = {
         'mouse_down': '<Button-1>',
         'mouse_up': '<ButtonRelease-1>',
@@ -86,14 +96,19 @@ class GooeyPieWidget:
         'blur': '<FocusOut>'
     }
 
-    # def __repr__(self):
-    #     return f"<GooeyPieApp '{self.title}'"
-
     def __init__(self, container=None):
+        """Creates a new GooeyPieWidget object
+
+        Args:
+            container(ContainerBase): The Container to which the widget is being added
+
+        Raises:
+            TypeError: If container is not a valid Container object
+        """
+
         # Check that the container is valid
-        # if not isinstance(container, ContainerBase)
-        if not isinstance(container, (ttk.Frame, ttk.LabelFrame)):
-            raise GooeyPieError(f'A widget can only be added to a GooeyPieApp, Window or container')
+        if not isinstance(container, ContainerBase):
+            raise TypeError(f'A widget can only be added to a GooeyPieApp, Window or container')
 
         self._container = container
 
@@ -104,7 +119,15 @@ class GooeyPieWidget:
         self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
 
     def _event(self, event_name, tk_event=None):
-        """Constructs a GooeyPie Event object and calls the registered callback"""
+        """Constructs a GooeyPieEvent object and calls the registered callback
+
+        Args:
+            event_name(str): The name of the event
+            tk_event(tkinter.Event): The tkinter.Event object if applicable
+
+        Raises:
+            AttributeError: If the given event_name is not an event or cannot be associated with this widget
+        """
         try:
             gooeypie_event = GooeyPieEvent(event_name, self, tk_event)
             self._events[event_name](gooeypie_event)
@@ -112,7 +135,11 @@ class GooeyPieWidget:
             raise AttributeError(f"'{event_name}' listener not associated with this widget")
 
     def _slider_change_event(self, event_name, slider_value):
-        """In tkinter, slider change events send the new value of the slider, so this is a special callback"""
+        """Event function for slider change events
+
+        In tkinter, slider change events send the new value of the slider to the callback. This is ignored in
+        GooeyPie but can be accessed through the passed Event object.
+        """
 
         # The slider's change event will be called whenever a movement is detected on the widget, even if the
         # movement does not actually change the value. This checks whether or not a change has actually been made.
@@ -125,14 +152,20 @@ class GooeyPieWidget:
         self._event(event_name)
 
     def _text_change_event(self, event_name, a, b, c):
-        """To implement the change event for the Input/Textbox widget, a trace must be
-        added to the variable associated with the Input. The trace command sends
-        3 arguments to the callback"""
+        """To implement the change event for the Input widget
+
+        For the ttk.Entry widget, a trace must be added to the variable associated with the Input.
+        The trace command sends 3 arguments to the callback. These are ignored in GooeyPie.
+        """
         self._event(event_name)
 
     def _textbox_change_event(self, event_name, key_code):
-        """To implement the change event on ScrolledText, a sentinel variable is associated with the contents
-        of the text widget. This value is updated
+        """To implement the change event on the Textbox widget
+
+        For the tkinter.ScrolledText widget, the <KeyRelease> event is bound to this method, which checks if the
+        contents of the widget have changed by interrogating the sentinel StringVar associated with it.
+
+        Note: <KeyRelease> is not exposed as a GooeyPie event, so no clashes are possible with other events.
         """
         if self.text != self._sentinel.get():
             # Only process the event if the key release was a change in content, thus ignoring modifier keys etc
@@ -140,31 +173,43 @@ class GooeyPieWidget:
             self.text = self._sentinel.get()  # just in case
             self._event(event_name)
 
-    def add_event_listener(self, event_name, callback):
-        """Registers callback to respond to certain events"""
+    def add_event_listener(self, event_name, event_function):
+        """Registers an event function to respond to an event
+
+        Args:
+            event_name(str): The name of the event that will trigger the function.
+            event_function(function): The function called when the event is triggered
+
+        Raises:
+            ValueError: The given event_name is not an event or cannot be associated with this widget
+            TypeError: The event_function is not a function
+            ValueError: The event_function does not accept a single argument
+            GooeyPieError: A Hyperlink widget is assigned the mouse_down or mouse_over event
+        """
 
         # Check that the event is valid for the given widget
         if event_name not in self._events:
-            raise GooeyPieError(f"The event '{event_name}' is not valid for widget {self}")
+            raise ValueError(f"The event '{event_name}' is not valid for widget {self}")
 
         # Check that the callback is a function
-        if not callable(callback):
-            raise GooeyPieError(f"The second argument does not appear to be the name of a function. "
-                                f"Remember, no brackets - you don't want to *call* the function")
+        if not callable(event_function):
+            raise TypeError(f"The second argument does not appear to be the name of a function. "
+                            f"Remember, no brackets - you don't want to *call* the function")
 
         # Check that the event function specified accepts a single argument
-        if callback.__code__.co_argcount != 1:
-            raise GooeyPieError(f"The event function '{callback.__name__}' must accept a single argument")
+        if event_function.__code__.co_argcount != 1:
+            raise GooeyPieError(f"The event function '{event_function.__name__}' must accept a single argument")
 
         # Hyperlinks have default events for mouse_down (activating the link)
-        # and mouse_over (showing a hand icon)
+        # and mouse_over (showing a hand icon) which cannot be overridden
         if isinstance(self, Hyperlink):
             if event_name in ('mouse_down', 'mouse_over'):
                 raise GooeyPieError(f"The '{event_name}' event cannot be associated with a Hyperlink")
 
         # Store the callback function in the widgets events dictionary
-        self._events[event_name] = callback
+        self._events[event_name] = event_function
 
+        # Events in self._tk_event_mappings are associated with the bind() method
         if event_name in self._tk_event_mappings:
             if isinstance(self, Listbox):
                 # Bind the event to the listbox part of the Listbox widget
@@ -175,6 +220,7 @@ class GooeyPieWidget:
             else:
                 self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
+        # Change events are different depending on the widget
         if event_name == 'change':
             if isinstance(self, RadiogroupBase):
                 # Add the event to each radiobutton in the group
@@ -210,7 +256,7 @@ class GooeyPieWidget:
             self.configure(command=partial(self._event, event_name))
 
         if event_name == 'select':
-            # Select event associated with Listboxes, dropdowns and tables
+            # Select event associated with Listboxes, Dropdowns and Tables
             if isinstance(self, SimpleListbox):
                 self.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Listbox):
@@ -221,12 +267,16 @@ class GooeyPieWidget:
                 self._treeview.bind('<<TreeviewSelect>>', partial(self._event, event_name))
 
     def remove_event_listener(self, event_name):
-        """
-        Removes an event listener from a widget. Raises a GooeyPieError if the event is no associated with that widget,
-        but does not raise an error if there is no event to remove.
+        """Removes an event listener from a widget. Has no effect if the event is not currently set.
+
+        Args:
+            event_name (str): The name of the event
+
+        Raises:
+            ValueError: The given event_name is not an event or cannot be associated with this widget
         """
         if event_name not in self._events:
-            raise GooeyPieError(f"Event '{event_name}' is not valid for {self}")
+            raise ValueError(f"Event '{event_name}' is not valid for {self}")
 
         if event_name in self._tk_event_mappings:
             # Unbind standard events like mouse_down, right_click etc
@@ -234,7 +284,7 @@ class GooeyPieWidget:
                 # Unbind the event to the listbox part of the ScrolledListbox
                 self._listbox.unbind(self._tk_event_mappings[event_name])
             elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
-                # Go ahead and unbind unless they we're trying to break the hyperlink
+                # Go ahead and unbind unless it will break the hyperlink functionality
                 self.unbind(self._tk_event_mappings[event_name])
 
         if event_name == 'change':
@@ -277,6 +327,7 @@ class GooeyPieWidget:
     # All widgets can be enabled and disabled
     @property
     def disabled(self):
+        """Gets or sets the state of the widget as either disable or not"""
         return self._disabled
 
     @disabled.setter
@@ -320,6 +371,7 @@ class GooeyPieWidget:
 
     @property
     def margin_top(self):
+        """Gets or sets the top margin of the widget as a value in pixels"""
         return self.margins[0]
 
     @margin_top.setter
@@ -328,6 +380,7 @@ class GooeyPieWidget:
 
     @property
     def margin_right(self):
+        """Gets or sets the right margin of the widget as a value in pixels"""
         return self.margins[1]
 
     @margin_right.setter
@@ -336,6 +389,7 @@ class GooeyPieWidget:
 
     @property
     def margin_bottom(self):
+        """Gets or sets the bottom margin of the widget as a value in pixels"""
         return self.margins[2]
 
     @margin_bottom.setter
@@ -344,6 +398,7 @@ class GooeyPieWidget:
 
     @property
     def margin_left(self):
+        """Gets or sets the left margin of the widget as a value in pixels"""
         return self.margins[3]
 
     @margin_left.setter
@@ -351,7 +406,7 @@ class GooeyPieWidget:
         self.margins[3] = value
 
     def set_focus(self):
-        """Sets the focus to the widget"""
+        """Gives focus to the current widget"""
 
         # If tkinter's focus() method is called during an event, it is ignored. This hackiness fixes that.
         self.winfo_toplevel().after(0, self.focus)
@@ -359,16 +414,22 @@ class GooeyPieWidget:
 
 class Label(ttk.Label, GooeyPieWidget):
     def __init__(self, container, text):
+        """Creates a new label widget
+
+        Args:
+            container: The window or container to which the widget will be added
+            text (str): The text of the label
+        """
         GooeyPieWidget.__init__(self, container)
         ttk.Label.__init__(self, container, text=text)
 
-        # mapping for alignment options
+        # Mapping between GooeyPie and tkinter for alignment options
         self._tk_settings = {
             'left': 'w',
             'center': 'center',
             'right': 'e'
         }
-        # Need to add style information here to be able to lookup for wrapping
+        # Need to add style information here to be able to look up for wrapping
         # Also used more extensively in the child class StyleLabel to add formatting
         self._style = ttk.Style()
         self._style_id = f'{str(id(self))}.TLabel'  # Need a custom id for each instance
@@ -384,6 +445,7 @@ class Label(ttk.Label, GooeyPieWidget):
 
     @property
     def text(self):
+        """Gets or sets the text of the label"""
         return self.cget('text')
 
     @text.setter
@@ -392,6 +454,9 @@ class Label(ttk.Label, GooeyPieWidget):
 
     @property
     def align(self):
+        """Gets or sets the alignment of the label (left, right or center). Has no effect if the width of the
+        label has not been set to exceed the number of character in the label.
+        """
         tk_setting = str(self.cget('anchor'))
         if tk_setting == 'w':
             return 'left'
@@ -409,23 +474,24 @@ class Label(ttk.Label, GooeyPieWidget):
 
     @property
     def justify(self):
-        """Returns the justify property - 'left', 'center' or 'right'"""
+        """Gets or sets the justify property of the label (left, center or right) which determines the horizontal
+        alignment or each line of text if the label contains newline characters.
+        """
         return self.cget('justify')
 
     @justify.setter
     def justify(self, value):
-        """If the label contains newline characters, set to 'left', 'center' or 'right' to justify the text."""
         self.configure(justify=value)
 
     @property
     def width(self):
-        """If a width has been set, returns the width of the label, otherwise returns the empty string"""
-        return self.cget('width')
+        """Returns the width of the label in characters if it has been set. Returns None if width has not been set"""
+        return self.cget('width') or None
 
     @width.setter
     def width(self, value):
         """Set the width of the label in characters.
-        If the label is longer than the given width, it will be truncated
+        If the label is longer than the given width, it will be truncated unless the wrap property is set to True
         If the label is shorter than the given width, extra space will be allocated
         """
         self.configure(width=value)
@@ -456,7 +522,7 @@ class Label(ttk.Label, GooeyPieWidget):
             self.configure(wraplength='')
 
     def _pixels_per_character(self):
-        """Estimates the width of each character in pixels by naively calculating the length of
+        """Estimates the average width of a character in pixels by naively calculating the length of
         all ASCII characters in the label
         """
         from string import ascii_letters
@@ -466,14 +532,22 @@ class Label(ttk.Label, GooeyPieWidget):
 
 
 class Button(ttk.Button, GooeyPieWidget):
-    def __init__(self, container, text, callback, min_size=10):
+    def __init__(self, container, text, event_function, min_size=10):
+        """Creates a button
+
+        Args:
+            container: The window or container to which the widget will be added
+            text (str): The text on the button
+            event_function: The function called when the button is activated
+
+        """
         GooeyPieWidget.__init__(self, container)
         ttk.Button.__init__(self, container, text=text)
         size = max(min_size, len(text) + 2)
         self.configure(width=size)
         self._events['press'] = None
-        if callback:
-            self.add_event_listener('press', callback)
+        if event_function:
+            self.add_event_listener('press', event_function)
 
     def __str__(self):
         return f"<Button '{self.text}'>"
@@ -483,10 +557,8 @@ class Button(ttk.Button, GooeyPieWidget):
 
     @property
     def width(self):
+        """Gets or sets the width of the button in pixels"""
         return self.cget('width')
-
-    def __repr__(self):
-        return self.__str__()
 
     @width.setter
     def width(self, value):
@@ -494,6 +566,7 @@ class Button(ttk.Button, GooeyPieWidget):
 
     @property
     def text(self):
+        """Gets or sets the text on the button"""
         return self.cget('text')
 
     @text.setter
@@ -503,6 +576,18 @@ class Button(ttk.Button, GooeyPieWidget):
 
 class Slider(ttk.Scale, GooeyPieWidget):
     def __init__(self, container, low, high, orientation='horizontal'):
+        """Creates a slider
+
+        Args:
+            container: The window or container to which the widget will be added
+            low: An integer or float for the minimum value of the slider
+            high: An integer or float for the maximum value of the slider
+            orientation (str):
+
+        Raises:
+            #TODO ValueError: low is greater than high
+            #TODO TypeError: low or high are not numbers
+        """
         GooeyPieWidget.__init__(self, container)
         self._events['change'] = None
 
@@ -529,6 +614,7 @@ class Slider(ttk.Scale, GooeyPieWidget):
 
     @property
     def value(self):
+        """Gets or sets the current value of the slider"""
         return self._value.get()
 
     @value.setter
@@ -537,6 +623,7 @@ class Slider(ttk.Scale, GooeyPieWidget):
 
     @property
     def orientation(self):
+        """Gets or sets the orientation of the slider, either 'horizontal' or 'vertcial'"""
         return self.cget('orient')
 
     @orientation.setter
@@ -547,12 +634,20 @@ class Slider(ttk.Scale, GooeyPieWidget):
 class StyleLabel(Label):
     """A StyleLabel can be customised with colours (foreground and background), fonts and size
 
-    Two helper functions exist in the main application object:
-      fonts() returns all fonts
+    Two helper functions exist in the main GooeyPieApp application object:
+      fonts() returns all available fonts on the user's system
       font_available(name) returns True if name is installed on the current system
     """
 
     def __init__(self, container, text):
+        """Creates a new StyleLabel
+
+        A StyleLabel can be customised with fonts, styles and colours
+
+        Args:
+            container: The window or container to which the widget will be added
+            text (str): The text of the label
+        """
         super().__init__(container, text)
 
     def __str__(self):
@@ -586,6 +681,14 @@ class StyleLabel(Label):
         self._set_font(new_font)
 
     def set_font(self, font_name, size, options=''):
+        """Sets the font with name, size and other options
+
+        Args:
+            font_name (str): The font name
+            size: The font size as an integer, measured in points (pt), or the string 'default'
+            options (str): A list of options separated by spaces. Must be one or more of 'bold', 'italic',
+                'underline' or 'strikethrough'-
+        """
         self.font_name = font_name
         self.font_size = size
         if options:
@@ -601,12 +704,14 @@ class StyleLabel(Label):
                 self.strikethrough = 'strikethrough' if 'strikethrough' in options else 'normal'
 
     def clear_styles(self):
+        """Sets all fonts back to the default styles"""
         self._style.configure(self._style_id, font=font.nametofont('TkDefaultFont'))
         self.colour = 'default'
         self.background_color = 'default'
 
     @property
     def font_name(self):
+        """Gets or sets the font name, or 'default'"""
         return self._get_current_font()['family']
 
     @font_name.setter
@@ -618,6 +723,7 @@ class StyleLabel(Label):
 
     @property
     def font_size(self):
+        """Gets or sets the font size in points (pt), or 'default'"""
         return self._get_current_font()['size']
 
     @font_size.setter
@@ -633,6 +739,7 @@ class StyleLabel(Label):
 
     @property
     def font_weight(self):
+        """Gets or sets the font weight as either 'bold' or 'normal'"""
         return self._get_current_font()['weight']
 
     @font_weight.setter
@@ -645,6 +752,7 @@ class StyleLabel(Label):
 
     @property
     def font_style(self):
+        """Gets or sets the font style as either 'italic' or 'normal'"""
         if self._get_current_font()['slant'] == 'roman':
             return 'normal'
         else:
@@ -660,6 +768,7 @@ class StyleLabel(Label):
 
     @property
     def underline(self):
+        """Gets or sets the underline setting as either 'underline' or 'normal'"""
         current_font = self._style.lookup(self._style_id, 'font')
         if font.Font(font=current_font).actual()['underline'] == 0:
             return 'normal'
@@ -676,6 +785,7 @@ class StyleLabel(Label):
 
     @property
     def strikethrough(self):
+        """Gets or sets the strikethrough setting as either 'strikethrough' or 'normal'"""
         current_font = self._style.lookup(self._style_id, 'font')
         if font.Font(font=current_font).actual()['overstrike'] == 0:
             return 'normal'
@@ -693,6 +803,7 @@ class StyleLabel(Label):
 
     @property
     def colour(self):
+        """Gets or sets the colour as a hex string, named colour or 'default'"""
         current_colour = self._style.lookup(self._style_id, 'foreground')
         if current_colour == 'SystemWindowText':
             return 'default'
@@ -708,6 +819,7 @@ class StyleLabel(Label):
 
     @property
     def background_colour(self):
+        """Gets or sets the background colour as a hex string, named colour or 'default'"""
         current_colour = self._style.lookup(self._style_id, 'background')
         if current_colour == 'SystemButtonFace':
             return 'default'
@@ -751,6 +863,13 @@ class StyleLabel(Label):
 
 class Hyperlink(StyleLabel):
     def __init__(self, container, text, url):
+        """Create a new hyperlink which opens the specified URL when activated in the default browser
+
+        Args:
+            container: The window or container to which the widget will be added
+            text (str): The text on the hyperlink
+            url (str): The URL that the hyperlink will open to
+        """
         StyleLabel.__init__(self, container, text)
         self.url = url
         self.colour = 'blue'
@@ -774,6 +893,12 @@ class Hyperlink(StyleLabel):
 
 class Image(Label):
     def __init__(self, container, image):
+        """Creates a new image
+
+        Args:
+            container: The window or container to which the widget will be added
+            image (str): The path to the image file
+        """
         Label.__init__(self, container, None)
         self.image = image
 
@@ -785,6 +910,7 @@ class Image(Label):
 
     @property
     def image(self):
+        """Gets or sets the image path and filename"""
         return self._image
 
     @image.setter
@@ -805,6 +931,11 @@ class Image(Label):
 
 class Input(ttk.Entry, GooeyPieWidget):
     def __init__(self, container):
+        """Creates a new Input widget
+
+        Args:
+            container: The window or container to which the widget will be added
+        """
         GooeyPieWidget.__init__(self, container)
         self._value = tk.StringVar()
         ttk.Entry.__init__(self, container, textvariable=self._value)
@@ -819,6 +950,7 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     @property
     def width(self):
+        """Gets or sets the width of the Input in characters"""
         return self.cget('width')
 
     @width.setter
@@ -829,6 +961,7 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     @property
     def text(self):
+        """Gets or sets the text in the Input"""
         return self._value.get()
 
     @text.setter
@@ -837,8 +970,8 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     @property
     def secret(self):
-        # 'show' will be the empty string if secret is not set
-        return self.cget('show')
+        """Gets or sets whether to hide the characters in the Input with dots"""
+        return self.cget('show') == '●'
 
     @secret.setter
     def secret(self, value):
@@ -849,6 +982,7 @@ class Input(ttk.Entry, GooeyPieWidget):
 
     @property
     def justify(self):
+        """Aligns the text horizontally within in the widget, either 'left', 'right' or 'center'"""
         return self.cget('justify')
 
     @justify.setter
@@ -856,15 +990,22 @@ class Input(ttk.Entry, GooeyPieWidget):
         self.configure(justify=value)
 
     def select(self):
+        """Selects (highlights) the contents of the Input"""
         self.focus()
         self.select_range(0, tk.END)
 
     def clear(self):
+        """Clears any text in the Input"""
         self.text = ''
 
 
 class Secret(Input):
     def __init__(self, container):
+        """Creates a new Secret Input
+
+        Args:
+            container: The window or container to which the widget will be added
+        """
         Input.__init__(self, container)
         self.configure(show='●')
 
@@ -875,12 +1016,15 @@ class Secret(Input):
         return self.__str__()
 
     def unmask(self):
+        """Shows the characters in the Secret"""
         self.configure(show='')
 
     def mask(self):
+        """Hides the characters in the Secret"""
         self.configure(show='●')
 
     def toggle(self):
+        """Toggles between showing and hiding the characters in the Secret"""
         if self.cget('show'):
             self.unmask()
         else:
@@ -888,7 +1032,9 @@ class Secret(Input):
 
 
 class SimpleListbox(tk.Listbox, GooeyPieWidget):
+    """Base class for the Listbox widget. Inherited by Listbox, which includes a vertical scrollbar"""
     def __init__(self, container, items=()):
+        """Creates a new SimpleListbox"""
         GooeyPieWidget.__init__(self, container)
         tk.Listbox.__init__(self, container)
 
@@ -913,52 +1059,47 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     @property
     def height(self):
-        """Returns the number of lines in the listbox"""
+        """Gets or sets the number of lines in the listbox"""
         return self.cget('height')
 
     @height.setter
     def height(self, lines):
-        """Sets the minimum number of lines in the listbox."""
         self.configure(height=lines)
 
     @property
     def width(self):
-        """Returns the number of lines in the listbox"""
+        """Gets or sets the width of the listbox in characters. Default is 20."""
         return self.cget('width')
 
     @width.setter
     def width(self, chars):
-        """Sets the minimum width of the listbox, in characters. Default is 20."""
         self.configure(width=chars)
 
     @property
     def items(self):
-        """Returns a COPY of the items in the listbox"""
+        """Gets or sets the contents of the Listbox as a list os strings"""
         return list(self.get(0, 'end'))
 
     @items.setter
     def items(self, items_):
-        """Sets the contents of the listbox"""
         self.delete(0, 'end')
         self.insert(0, *items_)
 
     @property
     def multiple_selection(self):
-        """Returns a Boolean indicating whether the listbox allows multiple items to be selected or not"""
+        """Gets or sets whether the listbox allows multiple items to be selected or not"""
         return self.cget('selectmode') == 'extended'
 
     @multiple_selection.setter
     def multiple_selection(self, multiple):
-        """Sets if the listbox allows multiple items to be selected or not"""
         self.select_none()
         mode = 'extended' if multiple else 'browse'
         self.configure(selectmode=mode)
 
     @property
     def selected_index(self):
-        """Returns the index(es), starting from 0, of the selected line.
-        Returns None if nothing is selected.
-        Returns a list of indexes if multiple selections are enabled.
+        """Gets or sets the index(es), starting from 0, of the selected line. Returns None if nothing
+        is selected. Returns a list of indexes if multiple selections are enabled.
         """
         select = self.curselection()
         if len(select) == 0:
@@ -970,9 +1111,8 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     @selected_index.setter
     def selected_index(self, index):
-        """Selects the line at the given index, counting from 0
-        This will add to the current selection if multiple selection is set
-        """
+        """Adds to the current selection if multiple selection is set"""
+
         # Clear the current selection if single selection only
         if not self.multiple_selection:
             self.select_none()
@@ -982,9 +1122,8 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     @property
     def selected(self):
-        """Returns the item(s), starting from 0, of the currently selected line.
-        Returns None if nothing is selected.
-        Returns a list of items if multiple selections are enabled.
+        """Gets or sets the item(s), starting from 0, of the currently selected line. Returns None
+        if nothing is selected. Returns a list of items if multiple selections are enabled.
         """
         select = self.curselection()
         if len(select) == 0:
@@ -996,9 +1135,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
     @selected.setter
     def selected(self, text):
-        """Sets the value at the current selection to text
-        Raises an error if multiple items are selected
-        """
+        """Sets the value at the current selection. Raises an error if zero or multiple items are selected"""
         select = self.curselection()
         if len(select) > 1:
             raise ValueError('Cannot set value when multiple items in the listbox are selected')
@@ -1026,17 +1163,37 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
             self.selection_set(0, 'end')
 
     def add_item(self, item):
-        """Adds an item to the end of the listbox"""
+        """Adds an item to the end of the listbox
+
+        Args:
+            item (str): The item to add to the Listbox
+        """
         self.insert('end', item)
 
     def add_item_to_start(self, item):
-        """Adds an item to the top of the listbox"""
+        """Adds an item to the top of the listbox
+
+        Args:
+            item (str): The item to add to the Listbox
+        """
         self.insert(0, item)
 
     def remove_item(self, index):
-        """Removes and returns the item at the given index"""
+        """Removes and returns the item at the given index
+
+        Args:
+            index (int): The index of the item to remove from the Listbox
+
+        Returns:
+            str: The item in the Listbox at index
+
+        Raises:
+            TypeError: Index is not an integer
+            ValueError: Index is negative
+            ValueError: Index is larger than the number of items in the listbox
+        """
         if type(index) != int:
-            raise ValueError('Cannot remove item from listbox - the index must be an integer')
+            raise TypeError('Cannot remove item from listbox - the index must be an integer')
         if index < 0:
             raise ValueError('Cannot remove item from listbox - the index cannot be negative')
         if index >= len(self.items):
@@ -1048,7 +1205,11 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
         return item
 
     def remove_selected(self):
-        """Removes all items from the selected index(es) and returns"""
+        """Removes and returns all items from the selected index(es)
+
+        Returns:
+            A string or list of strings, depending on whether multiple items is enabled. None if nothing is selected
+        """
         if self.selected_index is not None:
             if self.multiple_selection:
                 # Return a list of items if multiple selection enabled
@@ -1070,7 +1231,14 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
 
 class Listbox(Container, GooeyPieWidget):
+    """Listbox that includes a vertical scrollbar as needed."""
     def __init__(self, container, items=()):
+        """Creates a new Listbox
+
+        Args:
+            container: The window or container to which the widget will be added
+            items (list): Optional, a list of the items in the Listbox.
+        """
         Container.__init__(self, container)
 
         # Set container to fill cell
@@ -1144,6 +1312,7 @@ class Listbox(Container, GooeyPieWidget):
 
     @property
     def height(self):
+        """Gets or set the number of lines of the Listbox"""
         return self._listbox.cget('height')
 
     @height.setter
@@ -1152,6 +1321,7 @@ class Listbox(Container, GooeyPieWidget):
 
     @property
     def width(self):
+        """Gets or sets the width of the listbox in characters. Default is 20."""
         return self._listbox.width
 
     @width.setter
@@ -1160,92 +1330,116 @@ class Listbox(Container, GooeyPieWidget):
 
     @property
     def scrollbar(self):
+        """Gets or sets the scrollbar setting. Must be one of either 'auto', 'hidden' or 'visible'"""
         return self._scrollbar_visible
 
     @scrollbar.setter
     def scrollbar(self, setting):
         if setting not in ('auto', 'visible', 'hidden'):
-            raise GooeyPieError("Invalid scrollbar option - must be set to 'auto', 'hidden' or 'visible'")
+            raise ValueError("Invalid scrollbar option - must be set to 'auto', 'hidden' or 'visible'")
         self._scrollbar_visible = setting
         self._update_scrollbar()
 
     @property
     def items(self):
-        """Returns a COPY of the items in the listbox"""
+        """Gets or sets the contents of the Listbox as a list os strings"""
         return self._listbox.items
 
     @items.setter
     def items(self, items_):
-        """Sets the contents of the listbox"""
         self._listbox.items = items_
         self._update_scrollbar()
 
     @property
     def multiple_selection(self):
-        """Returns a Boolean indicating whether the listbox allows multiple items to be selected or not"""
+        """Gets or sets whether the listbox allows multiple items to be selected or not"""
         return self._listbox.multiple_selection
 
     @multiple_selection.setter
     def multiple_selection(self, multiple):
-        """Sets if the listbox allows multiple items to be selected or not"""
         self._listbox.multiple_selection = multiple
 
     @property
     def selected(self):
-        """Returns the item(s), starting from 0, of the currently selected line.
-        Returns None if nothing is selected.
-        Returns a list of items if multiple selections are enabled.
+        """Gets or sets the item(s), starting from 0, of the currently selected line. Returns None
+        if nothing is selected. Returns a list of items if multiple selections are enabled.
         """
         return self._listbox.selected
 
     @selected.setter
     def selected(self, text):
-        """Sets the selected item to the given text
-        Raises an error if multiple items are currently selected
-        Raises an error if no items are currently selected
-        """
+        """Sets the value at the current selection. Raises an error if zero or multiple items are selected"""
         self._listbox.selected = text
 
     @property
     def selected_index(self):
-        """Returns the index(es), starting from 0, of the selected line.
-        Returns None if nothing is selected.
-        Returns a list of indexes if multiple selections are enabled.
+        """Gets or sets the index(es), starting from 0, of the selected line. Returns None if nothing
+        is selected. Returns a list of indexes if multiple selections are enabled.
         """
         return self._listbox.selected_index
 
     @selected_index.setter
     def selected_index(self, index):
-        """Selects the line at the given index, counting from 0
-        This will add to the current selection if multiple selection is set
-        """
+        """Adds to the current selection if multiple selection is set"""
+
         self._listbox.selected_index = index
 
     def add_item(self, item):
-        """Adds an item to the end of the listbox"""
+        """Adds an item to the end of the listbox
+
+        Args:
+            item (str): The item to add to the Listbox
+        """
         self._listbox.add_item(item)
         self._update_scrollbar()
 
     def add_item_to_start(self, item):
-        """Adds an item to the top of the listbox"""
+        """Adds an item to the top of the listbox
+
+        Args:
+            item (str): The item to add to the Listbox
+        """
         self._listbox.add_item_to_start(item)
         self._update_scrollbar()
 
     def remove_item(self, index):
-        """Removes and returns the item at the given index"""
+        """Removes and returns the item at the given index
+
+        Args:
+            index (int): The index of the item to remove from the Listbox
+
+        Returns:
+            str: The item in the Listbox at index
+
+        Raises:
+            TypeError: Index is not an integer
+            ValueError: Index is negative
+            ValueError: Index is larger than the number of items in the listbox
+        """
         removed = self._listbox.remove_item(index)
         self._update_scrollbar()
         return removed
 
     def remove_selected(self):
-        """Removes all items from the selected index(es) and returns"""
+        """Removes and returns all items from the selected index(es)
+
+        Returns:
+            A string or list of strings, depending on whether multiple items is enabled. None if nothing is selected
+        """
         removed = self._listbox.remove_selected()
         self._update_scrollbar()
         return removed
 
 
 class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
+    """A Textbox is a multi-line input widget with vertical scrollbar"""
     def __init__(self, container, width=20, height=5):
+        """Create a new Textbox widget
+
+        Args:
+            width (int): The width of the Textbox in characters
+            height (int): The height of the Textbox in lines
+        """
         GooeyPieWidget.__init__(self, container)
         scrolledtext.ScrolledText.__init__(self, container, width=width, height=height)
         self._sentinel = tk.StringVar()
@@ -1289,12 +1483,13 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
 
     @staticmethod
     def insert_tab(event):
-        """Allows the user to insert a tab character into the textbox with ctrl"""
+        """Allows the user to insert a tab character into the textbox with ctrl/cmd"""
         event.widget.insert('current', '\t')
         return 'break'
 
     @property
     def width(self):
+        """Gets or sets the width of the Textbox in characters"""
         return self.cget('width')
 
     @width.setter
@@ -1303,6 +1498,7 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
 
     @property
     def height(self):
+        """Gets or sets the height of the Textbox in lines"""
         return self.cget('width')
 
     @height.setter
@@ -1311,12 +1507,13 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
 
     @property
     def text(self):
-        """Get all text. Strip the trailing newline added by tkinter"""
+        """Gets or sets the contents of the Textbox"""
+
+        # Strip the trailing newline added by tkinter
         return self.get('1.0', 'end')[:-1]
 
     @text.setter
     def text(self, text):
-        """Replaces the contents of the textbox"""
         self.clear()
         self.insert('1.0', text)
 
@@ -1325,25 +1522,50 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
         self.delete('1.0', 'end')
 
     def prepend(self, text):
-        """Adds the given text to the beginning of the textbox"""
+        """Adds text to the beginning of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
         self.text = f'{text}{self.text}'
 
     def prepend_line(self, text):
-        """Adds the given text to the beginning of the textbox including a newline"""
+        """Adds text plus a newline character to the beginning of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
         self.prepend(f'{text}\n')
 
     def append(self, text):
-        """Adds the given text to the end of the textbox"""
+        """Adds text to the end of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
         self.text = f'{self.text}{text}'
 
     def append_line(self, text):
-        """Adds the given text to the end of the textbox including a newline"""
+        """Adds text plus a newline character to the end of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
         self.append(f'{text}\n')
 
 
 class ImageButton(Button):
-    def __init__(self, container, image, callback, text=''):
-        super().__init__(container, text, callback, 0)
+    """An ImageButton widget is a button with an image and, optionally, text"""
+    def __init__(self, container, image, event_function, text=''):
+        """Create a new ImageButton
+
+        Args:
+            container: The window or container to which the widget will be added
+            image (str): The path and filename of the image
+            event_function (function): The function to call when the buton is activated
+            text (str): Optional text that appears on the button
+        """
+        super().__init__(container, text, event_function, 0)
         image_extension = image[-3:]
         if not PILLOW and image_extension != 'gif':
             raise ValueError('Only gif images can be used at this time.')
@@ -1366,16 +1588,25 @@ class ImageButton(Button):
 
     @property
     def image_position(self):
+        """Gets or sets the location of the image relative to the button text, either 'top', 'bottom', 'left'
+            or 'right'.
+        """
         return self.cget('compound')
 
     @image_position.setter
     def image_position(self, position):
-        """If an image button includes text, set where the image should appear relative to that text"""
         self.configure(compound=position)
 
 
 class Checkbox(ttk.Checkbutton, GooeyPieWidget):
+    """A checkbox indicates a boolean state"""
     def __init__(self, container, text):
+        """Creates a new checkbox
+
+        Args:
+            container: The window or container to which the widget will be added
+            text (str): The text that appears alongside the checkbox
+        """
         GooeyPieWidget.__init__(self, container)
         self._checked = tk.BooleanVar(value=False)
         ttk.Checkbutton.__init__(self, container, text=text, variable=self._checked)
@@ -1390,6 +1621,7 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 
     @property
     def checked(self):
+        """Gets or sets the state of the checkbox"""
         return self._checked.get()
 
     @checked.setter
@@ -1400,7 +1632,8 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 class RadiogroupBase(GooeyPieWidget):
     """Base class used by Radiogroup and LabelledRadiogroup"""
 
-    def __init__(self, container, choices, orient, override_spacing=False):
+    def __init__(self, container, choices, orientation, override_spacing=False):
+        """Creates a new group of RadioButtons"""
         GooeyPieWidget.__init__(self, container)
         self._events['change'] = None  # Radiobuttons support the 'change' event
         self._selected = tk.StringVar()
@@ -1410,7 +1643,7 @@ class RadiogroupBase(GooeyPieWidget):
 
         length = len(choices)
         # Set the appropriate grid based on the orientation. Create associated lists used when calling add()
-        if orient == 'vertical':
+        if orientation == 'vertical':
             self.set_grid(length, 1)
             rows = [n + 1 for n in range(length)]
             columns = [1] * length
@@ -1432,16 +1665,16 @@ class RadiogroupBase(GooeyPieWidget):
                 if pos != length - 1:
                     # Add appropriate spacing between radio items by changing horizontal or vertical margin
                     # (depending on orientation) on all items except for the last one
-                    if orient == 'vertical':
+                    if orientation == 'vertical':
                         margins[2] = pady[1]
                     else:
-                        # Bit more spacing between horizontal items
+                        # Add a bit more spacing between horizontal items
                         margins[1] = padx[1] * 2
 
             if isinstance(self, LabelRadiogroup):
                 margins = ['auto'] * 4
                 # For vertically aligned radiogroups, reduce the vertical spacing between items.
-                if orient == 'vertical':
+                if orientation == 'vertical':
                     if pos != length - 1:
                         margins[2] = 0
 
@@ -1449,10 +1682,12 @@ class RadiogroupBase(GooeyPieWidget):
 
     @property
     def options(self):
+        """Gets the list of options for the radiobuttons"""
         return tuple(widget.cget('text') for widget in self.winfo_children())
 
     @property
     def selected(self):
+        """Gets or sets the selected option. Returns None if no Radiobutton has been selected"""
         if self._selected.get():
             return self._selected.get()
         else:
@@ -1466,21 +1701,35 @@ class RadiogroupBase(GooeyPieWidget):
         """Deselects all options"""
         self._selected.set(None)
 
-    def disable(self, index):
-        """Disables the radiobutton at the given index"""
+    def disable_item(self, index):
+        """Disables a single Radiobutton
+
+        Args:
+            index (int): the RadioButton to disable, indexed from 0
+        """
         self.winfo_children()[index].configure(state='disabled')
 
-    def enable(self, index):
-        """Disables the radiobutton at the given index"""
+    def enable_item(self, index):
+        """Enables a single Radiobutton
+
+        Args:
+            index (int): the RadioButton to disable, indexed from 0
+        """
         self.winfo_children()[index].configure(state='enabled')
 
 
 class Radiogroup(Container, RadiogroupBase):
-    """A set of radio buttons"""
+    """A group of RadioButtons"""
+    def __init__(self, container, choices, orientation='vertical'):
+        """Create a new group of RadioButtons
 
-    def __init__(self, container, choices, orient='vertical'):
+        Args:
+            container: The window or container to which the widget will be added
+            choices: A list of the text alongside each RadioButton
+            orientation (str): The orientation of the RadioGroup, either 'horizontal' or 'vertical'
+        """
         Container.__init__(self, container)
-        RadiogroupBase.__init__(self, container, choices, orient, True)
+        RadiogroupBase.__init__(self, container, choices, orientation, True)
 
     def __str__(self):
         return f'<Radiogroup {tuple(self.options)}>'
@@ -1490,11 +1739,19 @@ class Radiogroup(Container, RadiogroupBase):
 
 
 class LabelRadiogroup(LabelContainer, RadiogroupBase):
-    """A set of radio buttons in a label frame"""
+    """A set of radio buttons, surrounded by a labelled frame"""
 
-    def __init__(self, container, title, choices, orient='vertical'):
+    def __init__(self, container, title, choices, orientation='vertical'):
+        """Create a new group of LabelRadioButtons
+
+        Args:
+            container: The window or container to which the widget will be added
+            title (str): The text on the frame surrounding the RadioButtons
+            choices: A list of the text alongside each RadioButton
+            orientation (str): The orientation of the RadioGroup, either 'horizontal' or 'vertical'
+        """
         LabelContainer.__init__(self, container, title)
-        RadiogroupBase.__init__(self, container, choices, orient)
+        RadiogroupBase.__init__(self, container, choices, orientation)
 
     def __str__(self):
         return f'<LabelRadiogroup {tuple(self.options)}>'
@@ -1504,7 +1761,15 @@ class LabelRadiogroup(LabelContainer, RadiogroupBase):
 
 
 class Dropdown(ttk.Combobox, GooeyPieWidget):
+    """A Dropdown widget holds a list of options, of which one can be selected"""
+
     def __init__(self, container, items):
+        """Create a new Dropdown widget. The initial selection will be blank unless it is explicitly set
+
+        Args:
+            container: The window or container to which the widget will be added
+            items: A list of the text of each item in the Dropdown
+        """
         GooeyPieWidget.__init__(self, container)
         ttk.Combobox.__init__(self, container, values=items, exportselection=0)
         self.state(['readonly'])
@@ -1518,16 +1783,18 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
     @property
     def items(self):
-        """Returns a COPY of the items in the Dropdown"""
+        """Gets or sets the contents of the Dropdown"""
         return self.cget('values')
 
     @items.setter
-    def items(self, items_):
+    def items(self, values):
         """Sets the contents of the Dropdown"""
-        self.configure(values=items_)
+        self.deselect()
+        self.configure(values=values)
 
     @property
     def selected(self):
+        """Gets or sets the selected item in the Dropdown"""
         index = self.current()
         if index == -1:
             return None
@@ -1536,7 +1803,6 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
     @selected.setter
     def selected(self, value):
-        """Sets the given item """
         try:
             self.cget('values').index(value)
             self.set(value)
@@ -1545,6 +1811,7 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
     @property
     def selected_index(self):
+        """Gets or sets the index of the selected item in the Dropdown, or None if no item is selected"""
         index = self.current()
         if index == -1:
             return None
@@ -1560,21 +1827,31 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
     @property
     def width(self):
+        """Gets or sets the width of the dropdown in characters (includes the control button)"""
         return self.cget('width')
 
     @width.setter
     def width(self, value):
-        """Sets the width of the dropdown in characters (includes the control buttons)"""
         self.configure(width=value)
 
     def deselect(self):
-        """Sets the selected item in the dropdown to a blank"""
+        """Deselects the currently selected item and shows an empty selection in the Dropdown"""
         self.set('')
 
 
 class Number(ttk.Spinbox, GooeyPieWidget):
+    """A Number widget contains a numerical value that can be directly edited or adjusted with up/down arrows"""
     def __init__(self, container, low, high, increment=1):
+        """Create a new Number widget
+
+        Args:
+            container: The window or container to which the widget will be added
+            low: The smallest value the widget can contain
+            high: The largest value the widget can contain
+            increment: The amount by which the number changes when the arrow buttons on the widget are pressed
+            """
         GooeyPieWidget.__init__(self, container)
+
         ttk.Spinbox.__init__(self, container, from_=low, to=high, increment=increment, wrap=True)
         self.set(low)
         self.width = len(str(high)) + 4
@@ -1591,10 +1868,8 @@ class Number(ttk.Spinbox, GooeyPieWidget):
 
     @property
     def value(self):
-        """Returns the value of the Number widget according to the type of increment
-        Note: The ttk.Spinbox widget get() method always returns a string
-        """
-        val = self.get()
+        """Gets or sets the value in the Number widget. When setting the value, type is not enforced"""
+        val = self.get()  # Note: The ttk.Spinbox widget get() method always returns a string
         try:
             if type(self.cget('increment')) == float:
                 # If the increment is a float, attempt to return a float
@@ -1616,21 +1891,14 @@ class Number(ttk.Spinbox, GooeyPieWidget):
     def value(self, value):
         """Sets the value of the number widget, but does not enforce typing in line with the increment"""
         self.set(value)
-        # Typesafe setter not being used:
-        # if type(value) not in (int, float):
-        #     raise ValueError(f'Invalid number {repr(value)} specified for {self}')
-        # if value < self.cget('from'):
-        #     raise ValueError(f'{value} is below the minimum value for {self}')
-        # if value > self.cget('to'):
-        #     raise ValueError(f'{value} is above the maximum value for {self}')
 
     @property
     def width(self):
+        """Gets or sets the width of the spinbox in characters (includes the control buttons)"""
         return self.cget('width')
 
     @width.setter
     def width(self, value):
-        """Sets the width of the spinbox in characters (includes the control buttons)"""
         self.configure(width=value)
 
     # The underlying ttk widget (Spinbox) has 3 states: normal, disabled and readonly, so the read_only getter/setter
@@ -1638,6 +1906,11 @@ class Number(ttk.Spinbox, GooeyPieWidget):
     # a disabled widget cannot have its read_only property altered, but no error is raised if that happens
     @property
     def read_only(self):
+        """Gets or sets the readonly state of the Number
+
+        When the readonly state is enabled, the user can change the value in the Number widget by using the arrowheads
+        on the widget, but cannot edit the value with the keyboard.
+        """
         return self._read_only
 
     @read_only.setter
@@ -1653,6 +1926,10 @@ class Number(ttk.Spinbox, GooeyPieWidget):
 
     @property
     def disabled(self):
+        """Gets or sets the disabled state of the Number widget.
+
+        The value cannot be changed by the user when it is disabled
+        """
         return self._disabled
 
     @disabled.setter
@@ -1669,6 +1946,14 @@ class Number(ttk.Spinbox, GooeyPieWidget):
 
     @property
     def wrap(self):
+        """Gets or sets the wrap property of the widget
+
+        When wrap is enabled, clicking the up arrow beyond the maximum value will cause the value displayed to
+        wrap to the minimum value. Likewise, clicking the down arrow on the minimum value will cause the value
+        displayed to wrap to the maximum value.
+
+        If wrap is disabled, clicking the up arrow on the maximum or the down arrow on the minimum has no effect.
+        """
         return bool(self.cget('wrap'))
 
     @wrap.setter
@@ -1683,6 +1968,12 @@ class Table(Container, GooeyPieWidget):
     sort_descending_icon = f'{icon_spacing}▼'
 
     def __init__(self, container, headings):
+        """Creates a new Table widget
+
+        Args:
+            container: The window or container to which the widget will be added
+            headings: A list of strings corresponding the heading of the Table
+        """
         Container.__init__(self, container)
 
         # Check that the heading are in a list
@@ -1728,19 +2019,26 @@ class Table(Container, GooeyPieWidget):
 
     def __str__(self):
         # Identified by column names
-        return f"<Table {tuple([self._treeview.heading(col_id)['text'] for col_id in range(self._num_columns)])}>"
+
+        headings = [self._treeview.heading(col_id)['text'] for col_id in range(self._num_columns)]
+
+        # Remove any sort icons from the headings
+        for index, heading in enumerate(headings):
+            if heading.endswith(self.sort_ascending_icon) or heading.endswith(self.sort_descending_icon):
+                headings[index] = heading[:-len(self.sort_descending_icon)]
+
+        return f"<Table {tuple(headings)}>"
 
     def __repr__(self):
         return self.__str__()
 
     @property
     def height(self):
-        """Returns the number of visible row in the table"""
+        """Gets or sets the height of the Table as the number of visible lines"""
         return self._treeview.cget('height')
 
     @height.setter
     def height(self, lines):
-        """Sets the*minimum number of visible rows in the table. The number of visible lines may be different"""
         self._treeview.configure(height=lines)
 
     def _update_scrollbar(self, _event=None):
@@ -1800,12 +2098,11 @@ class Table(Container, GooeyPieWidget):
 
     @property
     def data(self):
-        """Returns all data in the table as a list of lists"""
+        """Gets or sets all data in the table as a list of lists"""
         return [self._treeview.item(line)['values'] for line in self._treeview.get_children()]
 
     @data.setter
     def data(self, values):
-        """Replaces all data in the table with the given values, which must be a list of lists"""
         if not all(type(row) in (list, tuple) for row in values):
             raise ValueError('Table data must be a list of lists')
         if not all(len(row) == self._num_columns for row in values):
@@ -1817,12 +2114,13 @@ class Table(Container, GooeyPieWidget):
 
     @property
     def multiple_selection(self):
-        """Allows multiple rows to be selected with shift-click or ctrl-click"""
+        """Gets or sets the ability to select multiple items in the Table
+
+        Allows multiple rows to be selected with shift-click or ctrl-click"""
         return str(self._treeview.cget('selectmode')) == 'extended'
 
     @multiple_selection.setter
     def multiple_selection(self, multiple):
-        """Changes the selection mode between single and multiple"""
         mode = 'extended' if multiple else 'browse'
         self._treeview.config(selectmode=mode)
         # Clear the selection if single selection is enabled
@@ -1831,7 +2129,11 @@ class Table(Container, GooeyPieWidget):
 
     @property
     def selected(self):
-        """Returns the selected row, or a list of rows, or None"""
+        """Returns the selected data in the table
+
+        Returns:
+            The selected row as a list, or a list of lists for multiple selection, or None if no row is selected.
+        """
         selected_ids = self._treeview.selection()
         if not selected_ids:
             return None
@@ -1841,7 +2143,18 @@ class Table(Container, GooeyPieWidget):
             return self._treeview.item(selected_ids)['values']
 
     def add_row_at(self, index, data):
-        """Adds a row of data to the table at a given index"""
+        """Adds a row of data to the table at a given index
+
+        Args:
+            index (int): The index at which to add the row
+            data: A list of strings of data to add to the Table
+
+        Raises:
+            TypeError: index is not an integer
+            TypeError: data is not a list type
+            ValueError: the length of data does not match the number of columns in the table
+        """
+
         # Check if location is an integer
         if type(index) != int and index != 'end':
             raise TypeError(f'index must be an integer. The value provided was {index}')
@@ -1858,46 +2171,83 @@ class Table(Container, GooeyPieWidget):
         self._clear_sort_icons()
 
     def add_row(self, data):
-        """Adds a row of data to the table"""
+        """Adds a row of data to the end of the table
+
+        Args:
+            data: A list of strings of data to add to the Table
+        """
         self.add_row_at('end', data)
 
     def add_row_to_top(self, data):
-        """Adds a row of data to the start of the table"""
+        """Adds a row of data to the top of the table
+
+        Args:
+            data: A list of strings of data to add to the Table
+        """
         self.add_row_at(0, data)
 
     def clear(self):
-        """Removes all data rows from the table"""
+        """Removes all data from the table"""
         for row_id in self._treeview.get_children():
             self._treeview.delete(row_id)
 
     def remove_row(self, index):
-        """Removes the specified row from the table, indexed from 0"""
+        """Removes the specified row from the table
+
+        Args:
+            index (int): the index at which to remove the row
+
+        Raises:
+            TypeError: index is not an integer
+            ValueError: index is not in a valid range
+        """
         row_ids = self._treeview.get_children()
         if type(index) != int:
             raise TypeError(f'index must be an integer. The value provided was {index}')
         if index < 0 or index > len(row_ids) - 1:
-            raise IndexError(f'The index must be between 0 and {len(row_ids) - 1}. '
+            raise ValueError(f'The index must be between 0 and {len(row_ids) - 1}. '
                              f'The value of index was {index}')
         row_data = self._treeview.item(row_ids[index])['values']
         self._treeview.delete(row_ids[index])
         return row_data
 
     def remove_selected(self):
-        """Removes the currently selected row from the table"""
+        """Removes the currently selected row from the table
+
+        Returns:
+            A list of strings of the data from the table, a list of lists if multiple rows are selected or
+                None if no rows are selected
+        """
         row_data = self.selected
         self._treeview.delete(*self._treeview.selection())
         return row_data
 
     def set_column_width(self, column, width):
-        """Sets the width in pixels of the specified column, indexed from 0"""
+        """Sets the width in pixels of the specified column, indexed from 0
+
+        Args:
+            column (int): The columns to set the width of, indexed from 0
+            width (int): The width in pixels of the column
+
+        Raises:
+            TypeError: The column number is invalid
+            TypeError: The width is invalid
+        """
         if type(column) != int or column < 0:
-            raise TypeError(f'Column number must be a positive integer. The value given was {column}')
+            raise TypeError(f'Column number must be a positive integer. The value given was {column}.')
         if type(width) != int or width <= 0:
-            raise TypeError(f'Column width must be a positive integer. The value given was {width}')
+            raise TypeError(f'Column width must be a positive integer. The value given was {width}.')
         self._treeview.column(column, width=width)
 
     def set_column_widths(self, *widths):
-        """Sets the width in pixels of all columns of the table"""
+        """Sets the width in pixels of all columns of the table
+
+        Args:
+            widths: The widths of each column, measured in pixels
+
+        Raises:
+            ValueError: The number of arguments does not match the number of columns
+        """
         if len(widths) != self._num_columns:
             raise ValueError(f'The number of arguments supplied ({len(widths)}) does not match '
                              f'the number of columns in the table ({self._num_columns})')
@@ -1905,7 +2255,16 @@ class Table(Container, GooeyPieWidget):
             self.set_column_width(column, width)
 
     def set_column_alignment(self, column, align):
-        """Sets the alignment of the specified column, indexed from 0"""
+        """Sets the alignment of the content in the specified column, indexed from 0
+
+        Args:
+            column (int): The columns to set the alignment of, indexed from 0
+            align (str): The alignment value, must be one of 'left', 'center' or 'right'
+
+        Raises:
+            TypeError: The column number is invalid
+            ValueError: The alignment value was not one of the possible options.
+        """
         alignment_mapping = {'left': 'w', 'center': 'center', 'right': 'e'}
 
         if type(column) != int or column < 0:
@@ -1916,7 +2275,14 @@ class Table(Container, GooeyPieWidget):
         self._treeview.column(column, anchor=alignment_mapping[align])
 
     def set_column_alignments(self, *aligns):
-        """Sets the text alignment (left, center or right) """
+        """Sets the alignment of all columns
+
+        Args:
+            aligns: The alignment value of each column
+
+        Raises:
+            ValueError: The number of arguments does not match the number of columns
+        """
         if len(aligns) != self._num_columns:
             raise ValueError(f'The number of arguments supplied ({len(aligns)}) does not match '
                              f'the number of columns in the table ({self._num_columns})')
@@ -1924,20 +2290,28 @@ class Table(Container, GooeyPieWidget):
             self.set_column_alignment(column, align)
 
     def select_row(self, index):
-        """Selects a given row in the table, indexed from 0"""
+        """Selects a given row in the table
+
+        Args:
+            index (int): the index of the row to select, starting from 0
+
+        Raises:
+            ValueError: there are no rows in the table to select
+            ValueError: the index is invalid
+        """
         all_rows = self._treeview.get_children()
         if len(self._treeview.get_children()) == 0:
             raise ValueError(f'Table has no rows to select')
         if index not in range(len(all_rows)):
-            raise IndexError(f'The index must be between 0 and {len(all_rows) - 1}. '
+            raise ValueError(f'The index must be between 0 and {len(all_rows) - 1}. '
                              f'The value of the index specified was {index}.')
         row_id = all_rows[index]
         self._treeview.selection_set(row_id)
         self._treeview.see(row_id)  # Show the selected row (in case it is not be in view)
 
     def select_all(self):
-        """Selects all rows of the table if multiple selection is enabled.
-        Has no effect if multiple selection is not enabled"""
+        """Selects all rows of the table if multiple selection is enabled. Has no effect if multiple selection
+        is not enabled"""
         if self.multiple_selection:
             self._treeview.selection_set(*self._treeview.get_children())
 

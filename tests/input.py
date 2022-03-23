@@ -178,4 +178,5 @@ app.add(log_container, 3, 1, fill=True)
 # Give the input a random value
 main_inp.text = choice(['Chocolate', 'The rain in Spain falls mainly on the ground', '😀'])
 
+
 app.run()

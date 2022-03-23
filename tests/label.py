@@ -45,8 +45,8 @@ min_length_container = gp.Container(testing_container)
 # CREATE WIDGETS
 
 # Test subject
-test_lbl = gp.Label(widget_container, label_text[1])
-test_lbl.width = 180
+test_lbl = gp.Label(widget_container, choice(label_text))
+# test_lbl.width = 180
 test_lbl.wrap = True
 
 # Label contents
@@ -114,6 +114,7 @@ min_length_container.add(min_length_down_btn, 1, 4)
 
 # Testing container
 testing_container.set_grid(5, 2)
+testing_container.set_column_weights(0, 1)
 testing_container.add(content_container, 1, 1, column_span=2)
 testing_container.add(length_lbl, 2, 1)
 testing_container.add(length_container, 2, 2)
@@ -135,7 +136,7 @@ app.add(widget_container, 1, 1, fill=True, stretch=True)
 app.add(testing_container, 2, 1, fill=True)
 app.add(log_container, 3, 1, fill=True)
 
-
+print(f'{test_lbl.width=}')
 app.run()
 
 
