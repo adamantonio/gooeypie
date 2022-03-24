@@ -46,6 +46,10 @@ secret = gp.Secret(app)
 slider = gp.Slider(app, 1, 10)
 number = gp.Number(app, 1, 10)
 style_label = gp.StyleLabel(app, 'Style Label')
+style_label.background_color = 'darkred'
+style_label.color = 'white'
+style_label.align = 'center'
+style_label.set_padding(10, 5)
 textbox = gp.Textbox(app)
 table = gp.Table(app, ['Head 1', 'Head 2'])
 table.data = [['one', 'one'], ['two', 'two'], ['three', 'three']]
