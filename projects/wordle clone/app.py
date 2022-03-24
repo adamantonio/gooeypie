@@ -1,11 +1,8 @@
 """Notes
 
-Required library updates before making this a public thing:
-    + Padding
-    + Get widget
-
 Other thing to think about:
     + All of those early returns from guess()... bad? Maybe need to split those out
+    + Maybe update the
 
 """
 import gooeypie as gp
@@ -24,7 +21,7 @@ colours = {
     CORRECT: 'ForestGreen'
 }
 
-
+---
 def wordle(target, guess_word):
     """Returns an array of 5 colours to indicate success or failure of guess"""
     target_list = list(target)
@@ -48,7 +45,7 @@ def wordle(target, guess_word):
 
 
 def load_words():
-    """Word list from https://github.com/charlesreid1/five-letter-words/blob/master/sgb-words.txt"""
+    """Wordlist from https://github.com/charlesreid1/five-letter-words/blob/master/sgb-words.txt"""
     for line in open('words.txt').readlines():
         words.append(line.strip().upper())
 
@@ -62,11 +59,11 @@ def set_target_word():
 def reset_game(event):
     global current_guess
     set_target_word()
-    for row in range(6):
-        for col in range(5):
-            progress_cont._grid[row][col].text = '?'
-            progress_cont._grid[row][col].colour = 'LightGray'
-            progress_cont._grid[row][col].background_color = 'default'
+    for row in range(1, 7):
+        for col in range(1, 6):
+            progress_cont.get_widget(row, col).text = '?'
+            progress_cont.get_widget(row, col).colour = 'LightGray'
+            progress_cont.get_widget(row, col).background_color = 'default'
 
     status_lbl.text = 'Good luck!'
     guess_btn.text = 'Guess'
@@ -95,9 +92,9 @@ def guess(event):
 
     guess_result = wordle(target_word, guess_inp.text)
     for index in range(5):
-        progress_cont._grid[current_guess - 1][index].text = guess_inp.text[index]
-        progress_cont._grid[current_guess - 1][index].colour = 'white'
-        progress_cont._grid[current_guess - 1][index].background_colour = colours[guess_result[index]]
+        progress_cont.get_widget(current_guess, index + 1).text = guess_inp.text[index]
+        progress_cont.get_widget(current_guess, index + 1).colour = 'white'
+        progress_cont.get_widget(current_guess, index + 1).background_colour = colours[guess_result[index]]
 
     if guess_result == [CORRECT] * 5:
         status_lbl.text = 'You got it!'
@@ -136,7 +133,17 @@ for row in range(6):
         temp_lbl.width = 2
         temp_lbl.align = 'center'
         temp_lbl.colour = 'LightGray'
-        temp_lbl.margins = [4, 4, 4, 4]
+        temp_lbl.margins = [5, 5, 5, 5]
+        if row == 0:
+            temp_lbl.margin_top *= 2
+        if row == 5:
+            temp_lbl.margin_bottom *= 2
+        if col == 0:
+            temp_lbl.margin_left *= 4
+        if col == 4:
+            temp_lbl.margin_right *= 4
+        temp_lbl.set_padding(4, 4)
+
         progress_cont.add(temp_lbl, row + 1, col + 1)
 
 guess_inp = gp.Input(app)
