@@ -116,7 +116,18 @@ class GooeyPieWidget:
         self._events = {event_name: None for event_name in self._tk_event_mappings.keys()}
 
         self._disabled = False
+        self._padding = [0, 0]
         self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
+
+    def _set_padding(self, horizontal, vertical):
+        """Sets padding for the widget. Only exposed for certain widgets, this method exists here for error checking"""
+        if type(horizontal) != int or type(vertical) != int:
+            raise TypeError('Padding values must be integers')
+        if horizontal < 0 or vertical < 0:
+            raise ValueError('Padding values cannot be negative')
+
+        self._padding[0] = horizontal
+        self._padding[1] = vertical
 
     def _event(self, event_name, tk_event=None):
         """Constructs a GooeyPieEvent object and calls the registered callback
@@ -702,6 +713,15 @@ class StyleLabel(Label):
                 self.font_style = 'italic' if 'italic' in options else 'normal'
                 self.underline = 'underline' if 'underline' in options else 'normal'
                 self.strikethrough = 'strikethrough' if 'strikethrough' in options else 'normal'
+
+    def set_padding(self, horizontal, vertical):
+        """Sets the spacing between the contents of the label and the edge of the label
+
+        Args:
+            horizontal (int): The distance in pixels between the left and right of the label and the widget edge
+            vertical (int): The distance in pixels between the top and bottom of the label and the widget edge
+        """
+        self._set_padding(horizontal, vertical)
 
     def clear_styles(self):
         """Sets all fonts back to the default styles"""
@@ -1562,7 +1582,7 @@ class ImageButton(Button):
         Args:
             container: The window or container to which the widget will be added
             image (str): The path and filename of the image
-            event_function (function): The function to call when the buton is activated
+            event_function: The function to call when the button is activated
             text (str): Optional text that appears on the button
         """
         super().__init__(container, text, event_function, 0)
@@ -1571,6 +1591,7 @@ class ImageButton(Button):
             raise ValueError('Only gif images can be used at this time.')
 
         self._image = image
+        self._padding = [4, 4]  # default spacing between the image and button border
 
         if not PILLOW:
             self._tk_image = tk.PhotoImage(file=image)
@@ -1596,6 +1617,15 @@ class ImageButton(Button):
     @image_position.setter
     def image_position(self, position):
         self.configure(compound=position)
+
+    def set_padding(self, horizontal, vertical):
+        """Sets the spacing between the image on the button and button border
+
+        Args:
+            horizontal (int): The distance in pixels to the left and right of the image and the button border
+            vertical (int): The distance in pixels to the top and bottom of the image and the button border
+        """
+        self._set_padding(horizontal, vertical)
 
 
 class Checkbox(ttk.Checkbutton, GooeyPieWidget):
