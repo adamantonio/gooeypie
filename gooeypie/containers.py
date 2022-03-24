@@ -12,7 +12,6 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
     """Base class for Container and LabelContainer classes - provides functions for layout"""
 
     spacing = {
-        'window_padding': 0,
         'widget_spacing_x': [8, 8],
         'widget_spacing_y': [8, 8]
     }
@@ -132,7 +131,6 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         # Set each column of the grid to stretch evenly when the window resizes
         for col in range(columns):
             self.columnconfigure(col, weight=1)
-
         for row in range(rows):
             self.rowconfigure(row, weight=1)
 
@@ -147,106 +145,143 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
 
         Raises:
             GooeyPieError: If the grid has not been defined with a call to set_grid()
-            #TODO TypeError: If widget is not a valid GooeyPieWidget
-            #TODO TypeError: If row and column are not integers
+            # TODO TypeError: If widget is not a valid GooeyPieWidget
+            TypeError: If row and column are not positive integers
             ValueError: If the row or column specified is outside the bounds of the grid, or the row_span and
                 column_span specified exceed the grid size
         """
+        # Dictionary for all settings related to calling tkinter's .grid() method
+        grid_settings = {'row': row - 1, 'column': column - 1}
 
         # Check that widget is a valid GooeyPieWidget or Container
-        pass
+        # TODO: This won't work until containers.py and widgets.py are consolidated
+        # if not isinstance(widget, (GooeyPieWidget, ContainerBase)):
+        #     raise TypeError('Not a valid widget or Container')
 
         # Check that the grid has been defined
         if self._grid is None:
             raise GooeyPieError('The set_grid(rows, columns) function must be called before adding widgets')
 
         # Check that row and column are integers
-        pass
+        if type(row) != int or type(column) != int or row < 1 or column < 1:
+            raise TypeError('row and column must be positive integers')
 
         total_rows = len(self._grid)
         total_columns = len(self._grid[0])
 
         # Check that row and column are valid for the set grid
         if row > total_rows or column > total_columns:
-            raise Exception(f'Row {row}, Column {column} is outside the bounds of the defined grid '
-                            f'({total_rows} rows, {total_columns} columns)')
+            raise ValueError(f'Row {row}, Column {column} is outside the bounds of the defined grid '
+                             f'({total_rows} rows, {total_columns} columns)')
 
         # Check that the row and column is not occupied
-        pass  # Cell self.get_widget here
+        # TODO: Use self.get_widget when that gets written
+        cell_contents = self._grid[row - 1][column - 1]
+        if cell_contents is not None:
+            raise ValueError(f'Cannot add {widget} to row {row}, column {column} as it is currently occupied by'
+                             f' {cell_contents}')
 
-        # Check that rowspan colspan stuff
-        pass
+        # Get row span and column span
+        row_span = kwargs.get('row_span', 1)
+        column_span = kwargs.get('column_span', 1)
 
-        # If it's a container being added, initialise the container first
-        if type(widget) == LabelContainer:
+        # Check that the row span and column span don't extend beyond the limits of the grid
+        if row + row_span - 1 > total_rows:
+            raise ValueError(f'Cannot add {widget}. The row span specified causes the widget to extend beyond the '
+                             f'bounds of the grid.')
+        if column + column_span - 1 > total_columns:
+            raise ValueError(f'Cannot add {widget}. The column span specified causes the widget to extend beyond the '
+                             f'bounds of the grid.')
+
+        # Add row span and column span to grid settings
+        grid_settings['rowspan'] = row_span
+        grid_settings['columnspan'] = column_span
+
+        # If it's a container being added, initialise the container first to set any set width and height
+        if isinstance(widget, ContainerBase):
             widget._init_container()
 
-        # Determine the tkinter sticky property for alignment and fill/stretch
-        # Fill and stretch properties
-        sticky = ''
+        # Determine if fill and stretch properties have been set
+        grid_settings['sticky'] = ''
         if kwargs.get('fill'):
-            sticky += 'ew'
+            grid_settings['sticky'] += 'ew'
         if kwargs.get('stretch'):
-            sticky += 'ns'
+            grid_settings['sticky'] += 'ns'
 
-        # Alignment to top/bottom
-        # TODO:
-        sticky += self.tk_align_mappings[kwargs.get('align', 'left')]
-        sticky += self.tk_valign_mappings[kwargs.get('valign', 'top')]
+        # Determine alignment to top/bottom and left/right if fill/stretch is not set
+        if 'ew' not in grid_settings['sticky']:
+            grid_settings['sticky'] += self.tk_align_mappings[kwargs.get('align', 'left')]
+        if 'ns' not in grid_settings['sticky']:
+            grid_settings['sticky'] += self.tk_valign_mappings[kwargs.get('valign', 'top')]
 
-        # Column span and row span
-        column_span = kwargs.get('column_span', 1)
-        row_span = kwargs.get('row_span', 1)
+        # Default margins
+        margin_horizontal = self.spacing['widget_spacing_x'].copy()
+        margin_vertical = self.spacing['widget_spacing_y'].copy()
 
-        # TODO: use the column_span/row_span attribute to check that all widgets fit inside the given grid
-        self._grid[row-1][column-1] = widget
-
-        padx = self.spacing['widget_spacing_x'].copy()
-        pady = self.spacing['widget_spacing_y'].copy()
-
-        # If widgets are on the first and last row or column, double the spacing
-        # for more consistent spacing between widgets and the window edge
-        if column == 1:
-            padx[0] *= 2
-        if column + (column_span - 1) == len(self._grid[0]):
-            padx[1] *= 2
-
+        # If widgets are on the first and last row or column, double the margins for more consistent spacing
+        # between widgets and the window edge
         if row == 1:
-            pady[0] *= 2
-        if row + (row_span - 1) == len(self._grid):
-            pady[1] *= 2
+            margin_vertical[0] *= 2
+        if row + (row_span - 1) == total_rows:
+            margin_vertical[1] *= 2
 
-        # For a Container, set the padding on the edges to 0 or the contents will
-        # appear inset compared to other widgets in the window
-        # override_spacing is an ugly hacky solution so that radiobuttons don't inset in their Container
+        if column == 1:
+            margin_horizontal[0] *= 2
+        if column + (column_span - 1) == total_columns:
+            margin_horizontal[1] *= 2
+
+        # For a plain Container, set the margin on the edges of each widget to 0 or the contents of the Container
+        # will appear inset compared to other widgets in the window
         if type(self) == Container:
-            if column == 1:
-                padx[0] = 0
-            if column + (column_span - 1) == len(self._grid[0]):
-                padx[1] = 0
-
             if row == 1:
-                pady[0] = 0
-            if row + (row_span - 1) == len(self._grid):
-                pady[1] = 0
+                margin_vertical[0] = 0
+            if row + (row_span - 1) == total_rows:
+                margin_vertical[1] = 0
 
-        # Margins can be overridden - currently used internally by RadioGroup
-        # margin = [top, right, bottom, left]
-        margins = kwargs.get('margins') or widget.margins
+            if column == 1:
+                margin_horizontal[0] = 0
+            if column + (column_span - 1) == total_columns:
+                margin_horizontal[1] = 0
+
+        # Determine any margins or use the default
+        margins = kwargs.get('margins') or widget.margins  # margin = [top, right, bottom, left]
         if margins:
             top, right, bottom, left = margins
             if top != 'auto':
-                pady[0] = top
+                margin_vertical[0] = top
             if right != 'auto':
-                padx[1] = right
+                margin_horizontal[1] = right
             if bottom != 'auto':
-                pady[1] = bottom
+                margin_vertical[1] = bottom
             if left != 'auto':
-                padx[0] = left
+                margin_horizontal[0] = left
 
-        widget.grid(padx=padx, pady=pady, sticky=sticky,
-                    row=row-1, column=column-1, columnspan=column_span, rowspan=row_span)
+        # Add margins to grid settings dict
+        grid_settings['padx'] = margin_horizontal
+        grid_settings['pady'] = margin_vertical
 
+        # Determine any padding
+        padding = getattr(widget, '_padding', None)
+        if padding:
+            grid_settings['ipadx'] = padding[0]
+            grid_settings['ipady'] = padding[1]
+
+        # Use the row span and column span properties to populate all applicable cells in the internal grid
+        for i in range(row, row + row_span):
+            for j in range(column, column + column_span):
+                self._grid[i - 1][j - 1] = widget
+
+        widget.grid(**grid_settings)
+
+    def get_widget(self, row, column):
+        """Returns the widget at the given location in the grid"""
+        if type(row) != int or type(column) != int:
+            raise TypeError('row and column must be integers')
+        if row not in range(1, len(self._grid) + 1):
+            raise ValueError(f'row value must be an integer between 1 and {len(self._grid) + 1}')
+        if column not in range(1, len(self._grid[0]) + 1):
+            raise ValueError(f'column value must be an integer between 1 and {len(self._grid[0]) + 1}')
+        return self._grid[row - 1][column - 1]
 
     def set_column_weights(self, *args):
         """Determines how the space of columns is allocated in the window or container"""
