@@ -27,7 +27,6 @@ def toggle_state(event):
 
 
 app = gp.GooeyPieApp('Sliders')
-app.resizable(False)
 
 horizontal_cont = gp.LabelContainer(app, 'Horizontal sliders')
 vertical_cont = gp.LabelContainer(app,  'Vertical sliders')

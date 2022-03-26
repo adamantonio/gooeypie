@@ -28,6 +28,7 @@ class WindowBase(Container):
         self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
         self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
         self._icon = None  # Window icon
+        self._resizable = [True, True]
 
         self._on_close_callback = None  # Function called when window is closed
         self._default_close = self._root.destroy  # Default destroy for apps, overridden to hide() for windows
@@ -128,9 +129,35 @@ class WindowBase(Container):
         if self._root.winfo_ismapped():
             self._root.geometry(f'{self.width}x{value}')
 
-    def resizable(self, resize):
-        """Determines whether the user can change the size of the window"""
-        pass
+    @property
+    def resizable_horizontal(self):
+        """Gets or sets whether the window can be resized horizontally"""
+        return self._resizable[0]
+
+    @resizable_horizontal.setter
+    def resizable_horizontal(self, value):
+        self._resizable[0] = bool(value)
+        self._root.resizable(bool(value), self._resizable[1])
+
+    @property
+    def resizable_vertical(self):
+        """Gets or sets whether the window can be resized vertically"""
+        return self._resizable[0]
+
+    @resizable_vertical.setter
+    def resizable_vertical(self, value):
+        self._resizable[1] = bool(value)
+        self._root.resizable(self._resizable[0], bool(value))
+
+    def set_resizable(self, resize):
+        """Determines whether the user can change the size of the window
+
+        Args:
+            resize (bool): Whether the window can be resized or not by the user
+        """
+        resize = bool(resize)
+        self._resizable = [resize, resize]
+        self._root.resizable(resize, resize)
 
     def _create_menu(self, menu_path, parent):
         """Creates a tk menu object if it does not exist and adds it to the internal dictionary of menu objects
