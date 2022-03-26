@@ -38,7 +38,7 @@ label2.align = 'center'
 label2.margin_top = 0
 
 buttons_container.set_grid(1, 3)
-buttons_container.add(sub_button1, 1, 1, valign='middle', align='center')
+buttons_container.add('sub_button1', 1, 1, valign='middle', align='center')
 buttons_container.add(sub_button2, 1, 2, valign='middle', align='center')
 buttons_container.add(sub_button3, 1, 3, valign='middle', align='center')
 

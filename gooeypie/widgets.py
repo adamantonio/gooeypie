@@ -927,12 +927,17 @@ class Slider(ttk.Scale, GooeyPieWidget):
             container: The window or container to which the widget will be added
             low: An integer or float for the minimum value of the slider
             high: An integer or float for the maximum value of the slider
-            orientation (str):
+            orientation (str): either 'horizontal' or 'vertical'
 
         Raises:
-            #TODO ValueError: low is greater than high
-            #TODO TypeError: low or high are not numbers
+            TypeError: low or high are not numbers
+            ValueError: low is greater than high
         """
+        if not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
+            raise TypeError('low and high must be numerical types')
+        if low >= high:
+            raise ValueError('low must be less than high')
+
         GooeyPieWidget.__init__(self, container)
         self._events['change'] = None
 
@@ -945,7 +950,7 @@ class Slider(ttk.Scale, GooeyPieWidget):
         # The previous value is stored so that the change event is called only when the actual value changes
         self._previous_value = self._value.get()
 
-        # Swap low and high for vertical orientation to change the weird default behaviour
+        # Swap low and high for vertical orientation to change the weird default behaviour of up means lower
         if orientation == 'vertical':
             low, high = high, low
 
@@ -967,8 +972,17 @@ class Slider(ttk.Scale, GooeyPieWidget):
         self.set(val)
 
     @property
+    def length(self):
+        """Gets or sets the length of the slider in pixels"""
+        return self.cget('length')
+
+    @length.setter
+    def length(self, value):
+        self.configure(length=value)
+
+    @property
     def orientation(self):
-        """Gets or sets the orientation of the slider, either 'horizontal' or 'vertcial'"""
+        """Gets or sets the orientation of the slider, either 'horizontal' or 'vertical'"""
         return self.cget('orient')
 
     @orientation.setter
@@ -2080,6 +2094,9 @@ class RadiogroupBase(GooeyPieWidget):
             index (int): the RadioButton to disable, indexed from 0
         """
         self.winfo_children()[index].configure(state='enabled')
+
+    def set_grid(self, param, length):
+        pass
 
 
 class Radiogroup(Container, RadiogroupBase):
