@@ -1080,7 +1080,8 @@ class StyleLabel(Label):
         if value == 'default':
             self._set_font_property('family', font.nametofont('TkDefaultFont').actual()['family'])
         else:
-            self._set_font_property('family', value)
+            if value.lower() in [font_name.lower() for font_name in font.families()]:
+                self._set_font_property('family', value)
 
     @property
     def font_size(self):
