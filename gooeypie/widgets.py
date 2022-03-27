@@ -937,6 +937,8 @@ class Slider(ttk.Scale, GooeyPieWidget):
             raise TypeError('low and high must be numerical types')
         if low >= high:
             raise ValueError('low must be less than high')
+        if orientation not in ('horizontal', 'vertical'):
+            raise ValueError("Slider orientation must be either 'horizontal' or 'vertical'")
 
         GooeyPieWidget.__init__(self, container)
         self._events['change'] = None
@@ -979,15 +981,6 @@ class Slider(ttk.Scale, GooeyPieWidget):
     @length.setter
     def length(self, value):
         self.configure(length=value)
-
-    @property
-    def orientation(self):
-        """Gets or sets the orientation of the slider, either 'horizontal' or 'vertical'"""
-        return self.cget('orient')
-
-    @orientation.setter
-    def orientation(self, direction):
-        self.configure(orient=direction)
 
 
 class StyleLabel(Label):

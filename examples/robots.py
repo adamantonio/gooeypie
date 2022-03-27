@@ -7,8 +7,7 @@ def select_robot(event):
 app = gp.GooeyPieApp('Customise your avatar')
 app.width = 350
 
-select_sld = gp.Slider(app, 1, 5)
-select_sld.orientation = 'vertical'
+select_sld = gp.Slider(app, 1, 5, 'vertical')
 select_sld.value = 1
 select_sld.add_event_listener('change', select_robot)
 
