@@ -168,7 +168,7 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         grid_settings = {'row': row - 1, 'column': column - 1}
 
         # Check that widget is a valid GooeyPieWidget or Container
-        if not isinstance(widget, (GooeyPieWidget, ContainerBase)):
+        if not isinstance(widget, (GooeyPieWidget, ContainerBase, ttk.Radiobutton)):
             raise TypeError(f'Could not add {repr(widget)} as it is not a valid GooeyPie widget or Container')
 
         # Check that the grid has been defined
@@ -2003,7 +2003,7 @@ class Checkbox(ttk.Checkbutton, GooeyPieWidget):
 class RadiogroupBase(GooeyPieWidget):
     """Base class used by Radiogroup and LabelledRadiogroup"""
 
-    def __init__(self, container, choices, orientation, override_spacing=False):
+    def __init__(self, container, choices, orientation):
         """Creates a new group of RadioButtons"""
         GooeyPieWidget.__init__(self, container)
         self._events['change'] = None  # Radiobuttons support the 'change' event
@@ -2012,7 +2012,12 @@ class RadiogroupBase(GooeyPieWidget):
         # If images are used (to be implemented, need to support passing a list of 2-tuples,
         # where first item is the image, second is the value returned
 
+        if not isinstance(choices, (list, tuple)):
+            raise TypeError('Radiogroup choices must be a list')
         length = len(choices)
+        if length < 2:
+            raise ValueError('Radiogroups must have at least 2 options')
+
         # Set the appropriate grid based on the orientation. Create associated lists used when calling add()
         if orientation == 'vertical':
             self.set_grid(length, 1)
@@ -2088,9 +2093,6 @@ class RadiogroupBase(GooeyPieWidget):
         """
         self.winfo_children()[index].configure(state='enabled')
 
-    def set_grid(self, param, length):
-        pass
-
 
 class Radiogroup(Container, RadiogroupBase):
     """A group of RadioButtons"""
@@ -2103,7 +2105,7 @@ class Radiogroup(Container, RadiogroupBase):
             orientation (str): The orientation of the RadioGroup, either 'horizontal' or 'vertical'
         """
         Container.__init__(self, container)
-        RadiogroupBase.__init__(self, container, choices, orientation, True)
+        RadiogroupBase.__init__(self, container, choices, orientation)
 
     def __str__(self):
         return f'<Radiogroup {tuple(self.options)}>'
