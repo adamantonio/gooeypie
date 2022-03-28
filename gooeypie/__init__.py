@@ -1,9 +1,9 @@
+import os
 import tkinter
 from tkinter import messagebox
+from tkinter import filedialog
 
 from .widgets import *
-from .containers import *
-from .error import *
 
 __version__ = "0.3.0"
 

@@ -626,10 +626,13 @@ class GooeyPieWidget:
         if event_name in self._tk_event_mappings:
             # Unbind standard events like mouse_down, right_click etc
             if isinstance(self, Listbox):
-                # Unbind the event to the listbox part of the ScrolledListbox
+                # Unbind the event to the listbox part of the widget
                 self._listbox.unbind(self._tk_event_mappings[event_name])
+            elif isinstance(self, Table):
+                # Unbind the event to the treeview part of the Table widget
+                self._treeview.unbind(self._tk_event_mappings[event_name])
             elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
-                # Go ahead and unbind unless it will break the hyperlink functionality
+                # Default unbind for all widgets unless it will break the hyperlink functionality
                 self.unbind(self._tk_event_mappings[event_name])
 
         if event_name == 'change':
@@ -1080,6 +1083,7 @@ class StyleLabel(Label):
         if value == 'default':
             self._set_font_property('family', font.nametofont('TkDefaultFont').actual()['family'])
         else:
+            # Only change font if it is on the users system, otherwise do nothing
             if value.lower() in [font_name.lower() for font_name in font.families()]:
                 self._set_font_property('family', value)
 
@@ -1093,11 +1097,10 @@ class StyleLabel(Label):
         if value == 'default':
             self._set_font_property('size', font.nametofont('TkDefaultFont').actual()['size'])
         else:
-            try:
-                self._set_font_property('size', int(value))
-            except ValueError:
+            if type(value) != int:
                 raise ValueError(f"Font size must be an integer or the string 'default' "
                                  f"(value specified was {value})")
+            self._set_font_property('size', value)
 
     @property
     def font_weight(self):
@@ -1106,11 +1109,9 @@ class StyleLabel(Label):
 
     @font_weight.setter
     def font_weight(self, value):
-        try:
-            ('bold', 'normal').index(value)
-            self._set_font_property('weight', value)
-        except ValueError:
+        if value not in ('bold', 'normal'):
             raise ValueError(f"Font weight must be either 'bold' or 'normal' (value specified was '{value}')")
+        self._set_font_property('weight', value)
 
     @property
     def font_style(self):
@@ -1122,11 +1123,9 @@ class StyleLabel(Label):
 
     @font_style.setter
     def font_style(self, value):
-        try:
-            ('italic', 'normal').index(value)
-            self._set_font_property('slant', value)
-        except ValueError:
+        if value not in ('italic', 'normal'):
             raise ValueError(f"Font style must be either 'italic' or 'normal' (value specified was '{value}')")
+        self._set_font_property('slant', value)
 
     @property
     def underline(self):
@@ -1139,11 +1138,10 @@ class StyleLabel(Label):
 
     @underline.setter
     def underline(self, value):
-        try:
-            # 0 for normal, 1 for underline
-            self._set_font_property('underline', ('normal', 'underline').index(value))
-        except ValueError:
+        if value not in ('normal', 'underline'):
             raise ValueError(f"Underline must be either 'underline' or 'normal' (value specified was '{value}')")
+        # 0 for normal, 1 for underline
+        self._set_font_property('underline', ('normal', 'underline').index(value))
 
     @property
     def strikethrough(self):
@@ -1156,12 +1154,11 @@ class StyleLabel(Label):
 
     @strikethrough.setter
     def strikethrough(self, value):
-        try:
-            # 0 for normal, 1 for strikethrough (overstrike in tk-land)
-            self._set_font_property('overstrike', ('normal', 'strikethrough').index(value))
-        except ValueError:
+        if value not in ('normal', 'strikethrough'):
             raise ValueError(f"Strikethrough style must be either 'strikethrough' or 'normal' "
                              f"(value specified was '{value}')")
+        # 0 for normal, 1 for strikethrough (overstrike in tk-land)
+        self._set_font_property('overstrike', ('normal', 'strikethrough').index(value))
 
     @property
     def colour(self):
