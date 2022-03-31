@@ -1192,6 +1192,17 @@ class StyleLabel(Label):
         else:
             self._style.configure(self._style_id, background=value)
 
+    @property
+    def border(self):
+        """Gets or sets whether the label has a border or not"""
+        border_setting = str(self._style.lookup(self._style_id, 'relief'))
+        return border_setting == 'solid'
+
+    @border.setter
+    def border(self, value):
+        border_setting = 'solid' if value else 'flat'
+        self._style.configure(self._style_id, relief=border_setting)
+
     # Function aliases for alternate spellings of colour
     color = colour
     background_color = background_colour
