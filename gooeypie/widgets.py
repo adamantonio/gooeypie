@@ -2188,11 +2188,14 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
     @selected.setter
     def selected(self, value):
-        try:
-            self.cget('values').index(value)
-            self.set(value)
-        except ValueError:
-            raise ValueError(f"Cannot set Dropdown to '{value}' as it is not one of the options")
+        if value is None:
+            self.deselect()
+        else:
+            try:
+                self.cget('values').index(value)
+                self.set(value)
+            except ValueError:
+                raise ValueError(f"Cannot set Dropdown to '{value}' as it is not one of the options")
 
     @property
     def selected_index(self):

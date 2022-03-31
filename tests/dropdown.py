@@ -21,6 +21,7 @@ def get_items(event):
 def deselect(event):
     log.prepend_line(f'Deselected')
     dropdown.deselect()
+    # OR: dropdown.selected = None
 
 
 def change_items(event):
