@@ -394,6 +394,32 @@ class WindowBase(Container):
             raise ValueError(f"No submenu '{submenu}' found under menu '{menu}' found")
         self._menu[(menu, submenu)].add_separator()
 
+    def disable_menu(self, menu):
+        """Disables a top level menu
+
+        Args:
+            menu (str): The name of the top level menu
+
+        Raises:
+            ValueError: menu is not a top level menu
+        """
+        if menu not in self._menu:
+            raise ValueError(f"'{menu}' is not a top level menu")
+        self._menubar.entryconfigure(menu, state='disabled')
+
+    def enable_menu(self, menu):
+        """Enables a top level menu
+
+        Args:
+            menu (str): The name of the top level menu
+
+        Raises:
+            ValueError: menu is not a top level menu
+        """
+        if menu not in self._menu:
+            raise ValueError(f"'{menu}' is not a top level menu")
+        self._menubar.entryconfigure(menu, state='normal')
+
     def disable_menu_item(self, menu, item):
         """Disables a menu item
 

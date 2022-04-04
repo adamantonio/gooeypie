@@ -317,6 +317,48 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         for row, weight in enumerate(args):
             self.rowconfigure(row, weight=weight)
 
+    def disable_all(self):
+        """Disables all widgets in a container"""
+
+        # This might be the hackiest part of the entire codebase. Windows and the main app inherit from Container,
+        # but their contents cannot be accessed like container widgets are as the call to winfo_children() fails.
+        # It is also not possible to check for WindowBase types here as they are defined in __init__.py
+        if str(self).startswith('<GooeyPieApp') or str(self).startswith('<Window'):
+            widgets = self.children.values()
+            # Disable each top level menu
+            top_level_menus = [menu for menu in self._menu if type(menu) == str]  # top level menus only
+            for menu in top_level_menus:
+                self.disable_menu(menu)
+
+        else:
+            widgets = self.winfo_children()
+            self.state(['disabled'])  # Disables the container (for LabelContainer text and border)
+
+        for widget in widgets:
+            if isinstance(widget, GooeyPieWidget):
+                widget.disabled = True
+            elif isinstance(widget, ContainerBase):
+                widget.disable_all()
+
+    def enable_all(self):
+        """Enables all widgets in a container"""
+        if str(self).startswith('<GooeyPieApp') or str(self).startswith('<Window'):
+            widgets = self.children.values()
+            # Enable each top level menu
+            top_level_menus = [menu for menu in self._menu if type(menu) == str]  # top level menus only
+            for menu in top_level_menus:
+                self.enable_menu(menu)
+
+        else:
+            widgets = self.winfo_children()
+            self.state(['!disabled'])  # Enables the container (for LabelContainer text and border)
+
+        for widget in widgets:
+            if isinstance(widget, GooeyPieWidget):
+                widget.disabled = False
+            elif isinstance(widget, ContainerBase):
+                widget.enable_all()
+
 
 class Container(ContainerBase):
     """Transparent frame that other widgets can be placed in"""
