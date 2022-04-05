@@ -265,19 +265,14 @@ class WindowBase(Container):
                                                  command=partial(self._menu_select_callback, item_path, callback))
 
     def _change_menu_state(self, menu_path, item, state):
-        """Enables or disables a menu item"""
-        try:
-            menu = self._menu[menu_path]
-            max_index = menu.index('end')
-            # find the menu item
-            for menu_index in range(max_index + 1):
-                if menu.type(menu_index) != 'separator' and menu.entrycget(menu_index, 'label') == item:
-                    index = menu_index
-            menu.entryconfigure(index, state=state)
-        except NameError:
-            raise ValueError(f"The menu item could not be found")
-        except KeyError:
-            raise ValueError(f"The menu could not be found")
+        """Enables or disables a menu item or submenu"""
+        menu = self._menu[menu_path]
+        menus = [menu.entrycget(index, 'label') for index in range(menu.index('end') + 1) if
+                 menu.type(index) != 'separator']
+
+        if item not in menus:
+            raise ValueError(f"'{item}' is not a menu item under the menu {menu_path}")
+        self._menu[menu_path].entryconfigure(item, state=state)
 
     def add_menu_item(self, menu, item, event_function):
         """Adds a menu item to the window to a top level menu
@@ -426,7 +421,12 @@ class WindowBase(Container):
         Args:
             menu (str): The top level menu name
             item (str): The name of the menu item
+
+        Raises:
+            ValueError: menu is not a top level menu
         """
+        if menu not in self._menu:
+            raise ValueError(f"'{menu}' is not a top level menu")
         self._change_menu_state(menu, item, 'disabled')
 
     def enable_menu_item(self, menu, item):
@@ -435,7 +435,12 @@ class WindowBase(Container):
         Args:
             menu (str): The top level menu name
             item (str): The name of the menu item
+
+        Raises:
+            ValueError: menu is not a top level menu
         """
+        if menu not in self._menu:
+            raise ValueError(f"'{menu}' is not a top level menu")
         self._change_menu_state(menu, item, 'normal')
 
     def disable_submenu_item(self, menu, submenu, item):
@@ -445,7 +450,15 @@ class WindowBase(Container):
             menu (str): The top level menu name
             submenu (str): The name of the submenu under menu
             item (str): The name of the menu item
+
+        Raises:
+            ValueError: menu is not a top level menu
+            ValueError: submenu is not a menu under menu
         """
+        if menu not in self._menu:
+            raise ValueError(f"'{menu}' is not a top level menu")
+        if (menu, submenu) not in self._menu:
+            raise ValueError(f"'{submenu}' is not a submenu under '{menu}'")
         self._change_menu_state((menu, submenu), item, 'disabled')
 
     def enable_submenu_item(self, menu, submenu, item):
@@ -455,7 +468,15 @@ class WindowBase(Container):
             menu (str): The top level menu name
             submenu (str): The name of the submenu under menu
             item (str): The name of the menu item
+
+        Raises:
+            ValueError: menu is not a top level menu
+            ValueError: submenu is not a menu under menu
         """
+        if menu not in self._menu:
+            raise ValueError(f"'{menu}' is not a top level menu")
+        if (menu, submenu) not in self._menu:
+            raise ValueError(f"'{submenu}' is not a submenu under '{menu}'")
         self._change_menu_state((menu, submenu), item, 'normal')
 
     def set_menu_radio(self, menu, options, item):
