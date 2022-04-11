@@ -285,8 +285,25 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
 
         widget.grid(**grid_settings)
 
+        # If widget.hide() has been called prior to app.run(), immediately ungrid
+        if getattr(widget, '_start_hidden', False):
+            widget.grid_remove()
+        else:
+            # Re-grid but only if the widget has already been hidden once
+            if hasattr(widget, '_start_hidden'):
+                widget.grid()
+
     def get_widget(self, row, column):
-        """Returns the widget at the given location in the grid"""
+        """Returns the widget at the given location in the grid
+
+        Args:
+            row (int): the row number of the grid
+            column (int): the column number of the grid
+
+        Raises:
+            TypeError: the row or column are not integers
+            ValueError: the row or column and outside the bounds of the current grid
+        """
         if type(row) != int or type(column) != int:
             raise TypeError('row and column must be integers')
         if row not in range(1, len(self._grid) + 1):
@@ -2122,26 +2139,77 @@ class RadiogroupBase(GooeyPieWidget):
 
     @selected.setter
     def selected(self, value):
-        self._selected.set(value)
+        if value:
+            if value not in self.options:
+                raise ValueError(f"'{value}' is not one of the options in the radio group")
+            self._selected.set(value)
+        else:
+            self._selected.set('')
+
+    @property
+    def selected_index(self):
+        """Gets or sets the selected index from 0. Returns None if no Radiobutton has been selected"""
+        if self._selected.get():
+            return self.options.index(self._selected.get())
+        else:
+            return None
+
+    @selected_index.setter
+    def selected_index(self, index):
+        if type(index) != int:
+            raise TypeError(f'index must be a positive integer')
+        if index < 0 or index >= len(self.options):
+            raise ValueError(f'index must be an integer from 0 to {len(self.options) - 1}')
+        self._selected.set(self.options[index])
 
     def deselect(self):
         """Deselects all options"""
-        self._selected.set(None)
+        self._selected.set('')
 
-    def disable_item(self, index):
+    def disable_index(self, index):
         """Disables a single Radiobutton
 
         Args:
             index (int): the RadioButton to disable, indexed from 0
         """
+        if type(index) != int:
+            raise TypeError(f'index must be a positive integer')
+        if index < 0 or index >= len(self.options):
+            raise ValueError(f'index must be an integer from 0 to {len(self.options) - 1}')
         self.winfo_children()[index].configure(state='disabled')
 
-    def enable_item(self, index):
+    def enable_index(self, index):
         """Enables a single Radiobutton
 
         Args:
             index (int): the RadioButton to disable, indexed from 0
         """
+        if type(index) != int:
+            raise TypeError(f'index must be a positive integer')
+        if index < 0 or index >= len(self.options):
+            raise ValueError(f'index must be an integer from 0 to {len(self.options) - 1}')
+        self.winfo_children()[index].configure(state='enabled')
+
+    def disable_item(self, item):
+        """Disables a single Radiobutton
+
+        Args:
+            item (str): the text of the radiobutton to disable
+        """
+        if item not in self.options:
+            raise ValueError(f"'{item}' is not one of the options in the radio group")
+        index = self.options.index(item)
+        self.winfo_children()[index].configure(state='disabled')
+
+    def enable_item(self, item):
+        """Enables a single Radiobutton
+
+        Args:
+            item (str): the text of the radiobutton to enable
+        """
+        if item not in self.options:
+            raise ValueError(f"'{item}' is not one of the options in the radio group")
+        index = self.options.index(item)
         self.winfo_children()[index].configure(state='enabled')
 
 
