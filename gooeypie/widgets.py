@@ -7,8 +7,12 @@ import platform
 
 if platform.system() == 'Windows':
     OS = 'Windows'
-if platform.system() == 'Darwin':
+elif platform.system() == 'Darwin':
     OS = 'Mac'
+elif platform.system() == 'Linux':
+    OS = 'Linux'
+else:
+    OS = 'Other'
 
 try:
     from PIL import Image as PILImage, ImageTk
@@ -1469,13 +1473,15 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
 
         # Configuration options to make the listbox look more like a ttk widget
         self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'), activestyle='none',
-                       highlightcolor='systemHighlight', highlightthickness=1, exportselection=0)
+                       highlightthickness=1, exportselection=False)
 
         # Different border colour names for Windows and Mac https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
         if OS == 'Windows':
             self.configure(highlightbackground='systemGrayText')
+            self.configure(highlightcolor='systemHighlight')
         if OS == "Mac":
             self.configure(highlightbackground='systemBlackText')
+            self.configure(highlightcolor='systemHighlight')
 
         self.insert('end', *items)
         self._events['select'] = None
@@ -1874,14 +1880,16 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
         self._sentinel = tk.StringVar()
 
         self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'),
-                       wrap='word', highlightcolor='systemHighlight', highlightthickness=1)
+                       wrap='word', highlightthickness=1)
 
         # Different border colour names for Windows and Mac
         # https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
         if OS == 'Windows':
             self.configure(highlightbackground='systemGrayText')
+            self.configure(highlightcolor='systemHighlight')
         if OS == "Mac":
             self.configure(highlightbackground='systemBlackText')
+            self.configure(highlightcolor='systemHighlight')
 
         self.bind('<Tab>', self.focus_next_widget)
         self.bind('<Shift-Tab>', self.focus_previous_widget)
@@ -2816,6 +2824,3 @@ class Table(Container, GooeyPieWidget):
     def select_none(self):
         """Clears any selected rows in the table"""
         self._treeview.selection_remove(*self._treeview.selection())
-
-
-
