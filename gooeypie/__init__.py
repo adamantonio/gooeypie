@@ -1018,11 +1018,7 @@ class GooeyPieApp(WindowBase):
 
         """
         self._icon = image_file
-
-        if image_file[-3:] == 'ico':
-            self._root.iconbitmap(True, image_file)
-        else:
-            self._root.iconphoto(True, ImageTk.PhotoImage(PILImage.open(image_file)))
+        self._root.iconphoto(True, ImageTk.PhotoImage(PILImage.open(image_file)))
 
     def copy_to_clipboard(self, text):
         """Copies text to the OS clipboard
