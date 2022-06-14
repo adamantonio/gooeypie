@@ -2,6 +2,8 @@ import os
 import tkinter
 from tkinter import messagebox
 from tkinter import filedialog
+import base64
+from io import BytesIO
 
 from .widgets import *
 
@@ -997,17 +999,16 @@ class GooeyPieApp(WindowBase):
         return self.__str__()
 
     def _set_default_icon(self):
-        icon_data = """iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsSAAALEgHS3X78AAACUklEQVRYhc1XgbGCMA
-        wNfwFwAtlAN4ANdANHkA1kA91AN9ANdAPdQDaAP0H+vZ7xQoFCVbz/7nqcQvNekzRpiZn1iJg5Z+aCP4/iYTvSnJo8ZeZqBGIb1YOrJiD9ArE
-        NIyKAS4ioIKKQenC73agoCvMUpGlK8/mcoijqm27jl4jiHyLKXORVVVGe5xTHsSHb7XaNd5PJxIg4HA4+AkLD7Uq47XbLYRhykiR8Pp+d/tzv
-        9zydTs3o+1ahoK43q9XK11hNNAQNQasAkM9mMy7L0otccL1eB4toCFiv12+R2yL6PFgTIJPw/AQQDoTRtZiagMViwZvN5iPkAiQwhPQKuN/vT
-        ERvu97G8Xg0XugVAJXwwBhwhfVHqsLlcjGFZgzArq6eGk8BqGqoZmMAdlHCnQJ8sVwuB89w9gmJxZByq4Fa4cpuG13JXROAjB0KiEVyvbtrni
-        FAnJCIQ4HEwsiy7DkDHTMIgkEDXbSWAzB2Op28MgGtGXMkw5EXYRhSWZb2Ua82kiRp5gDwSvdD5UT4+BFnhAX9xAXdqMg2huTyAUghXPIHhrE
-        uVNY2YIH6faMbQoBvP5DDiLYhXrEhrV7QEODTyzVAKMJllfaugm38r223HkhEhM8+l20prkVf0V5BqNo803kkgwgY8ClQ+BYu5kd3hSB4Rci1
-        QC2g81CKiTCAiVL5IEaKD4zhN7JeDqTa7XpuR0c0h9K8b2UgRNywOqwSccSQEzMEtFVR2SEQ0NGOc6+LyStAl+1oRs+LSYUiNgY5uTvh0nD/l
-        8upjO9ez5npDxwrvxk2vF3PAAAAAElFTkSuQmCC"""
-        icon = tkinter.PhotoImage(data=icon_data)
-        self._root.iconphoto(True, icon)
+        # 128px square png encoded as base64 by https://onlinepngtools.com/convert-png-to-base64
+        icon_data = """iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAACXBIWXMAAAsSAAALEgHS3X78AAAJpUlEQVR4nO1d21EjOxAVW/ffZGA2AiAC2AjsG4HJADJYNoIlAyACcATgCLxEsBDBQgS+dXxH1Li3NS+rpdZIp2oKzGNGoz7ql6TWwWazMR5wXruOjDFTHzct+AtvxphXY8xz7doL+xDgxBhzZYyZG2MmRVZR8GGMeTTG3Bhjfg1pwBACYJRfG2POVHZJvlhVcumlFfoQ4NAYc2eMmeXe08qxNMZcGGPeuzTzS8d3mVe2pwhfP2aVrOZdWtqFAFArD8XOJ4VJJbPrtka3mQCo/EWWXTge3FcmgUWTBijCHwcWlSxZuAhwXYQ/Kixc5oAzAfPKfhSMD/9WeQMnAQ4rD7I4fOPER5Wp/QwRqQm4K8IfNSbUH6hrAGT4nnLvoUzwzWYM6xqgNWYsGA0+ZW01ACZ21kW+WeEUE0hWA1zl3hsZYitzqwHei/OXHRARHH6pnL8i/PwAmZ9bAhTkiUKAzHH+T5UZGiWen5/N+/u7+fXr/9VS+IrPdRweHpqTk5PtT/AVn8/PsxkTR3ACvawKjQ0I9vHxcSt0CPrl5WWvFh0fH28JATLM5/MtMUaJTcL48+fP5ufPn5vj42OQWPTCM/AsPHNMSJIAT09Pm9lsJi5014Vnow1jQFImAOr9+vrarFarTn8/nU7N0dHRp23H97jqsH6B9RVeX1/N29tbp/ufnZ1t25O0z5ACiTHazs7OWkfmdDrdXF5ebh4eHvZS1fhf3AP3wj3bnou2paoRVBMAglgsFp2Evl6vxdqBe3chA9qamo+glgAYgZPJpHHU3d7eBm8XntmkjdBmtD0VqCQARpt2ddtmllLRBqoIgA5zhXQYWTFGfBsw2l2mAe/y+/dvdW2uQw0BYGddKh8aQfNoQttcWgvvJOmf7AsVBHAJPzV7CrPgeg+tUUJ0AriEn4L65NBkxjSasKgEcAk/xXCKggtfNZqDaARoEv5YkAIJohAAo5vznMckfAuOBHh3LRouCgG4+HmMwrfgSIA+0IDgBPj+/ftfnYHZtbGDm71EX8RGUALA9nHe/tjm2Dm4ooPY4WFQAtAO0J4k8Q3O8Y3tDwQjAKf6scImNyAXoMkUBCEAEjqU+VqcoBjg/IFYSa8gBKBeMMiQYpbPF7gBESsKEicAXlaj9xsbnEmMMSjECUBHv6YkSGzQZFgMLSBKAG70a5wQiQXOIQytBUQJQNUc7F7BLqgWwLqCkOhaKnYQ7u52y9NdXZUyBBS0T2ifiUOKbFjIQdVbsf1/A31CI4KQZlJMA2CfXh2z2Wy8++v2APoEew/roH0niWAEuLhwlqvNHpQAy+UyXJdIqBVMcFD1X9AMagZCrYUU0QDYw1cH1H9BM6gWoH0ohSAEyKjgwmDQPgpFAJHdwQcHBzuf1+v1ZxWOAh7Ylfz169ed34XYuO1dA9hyLHUU4bcD29Ynk91ibSG0gHcCgMl1YA99QTfQgUL7UgLiGqCM/u6gfkCSBOCqcBV0A+0rzpz6hrgGKBFAd1BtSQeTBEQngwr0IzsC1AtHagNXwEoa4iaAvlRsILQ6PT3dtkvb9DTtq4+PD/mH+s4ta58DoEvUtO3bD91/4iYghCPTBzS00jZLiRK1FkHmUHwzim781DbCuJlKTesUbfnbUGVpsyPAhmkjpmJzXa2UZRh4c3Oz8xnOFv1ZLvBOgBjZrL5AwmWx2D0aGQQIkXrVBu8EiJHNGgIIvD77Bi2Aws+5wTsBaCwbamFDX0BT0TzA/f292iSRFMQJoFmtggAoKU9/lhUkPEstW5+7gNue1SVyaapnHOsaUnBDhAC0Eoj2ap+0vdiu1QZtwh+6/U4kDKSOYMiNDkNAQ0CcGNIWFmpd6dR7/kBiRNFtYV1GVGz0TQ5xGUUtVx+IEAAdRztDezGoIYUsuPp/oc0d58P0gdh0E62DE3rb8xBwAm1yYDnShNZ2dAt+39pLYgSgzEyhNgC3U7etakfs6md0oKkhAGcGUqgOwgm0KSzkSBNycolGMH3rL4muOKAqFY3VDq6QdduoilX7jxtkfX0QUQJwnnIK5+txAm3rWK76uXQCjCvC0feZ4muOaHiVSoHIvskhjuzSRbBpNnKIAypOAO0rcFzg2t3m3HFl8CU1no8yc0FWbdKOSaVWIPWw25w7rhq6lMbzVYIvCAG40ZRCXsBXckhC43GTUUMGVbB121zHpOAQch3dlhziSsL7BlX/Q/2NYATg4uUUTIGv5JDPsJCLUoZqmaA7N7iGp3BcjLbkEDdxNRTBt+5oPTunDT6SQz78Hs6f2qf/ghPAdWSc9tBwiNqVSA5xoeY+miXK5j3XoZHaScCFs03wnRziSLhviflouze5l9FOgiHq11dySMqviLp9N0USxEoOSflO0fdvu0ig9SRRLjnU5tztmxziJn185RZUbOB3kQAjRWOeoG9yyJUD6QKXv+QriaamgoOLBHh5bcvKOYG2OXdDkkOu00Z9ptFVlfCAoDm22w7WtMFkSHKIhoVt/gPnQPo+alddDReoPI719VGjwSwM0QJ9wjjOb5A4aldlIX90btPWK3QEiBBDI6BteDanqbp45Ry56XtwwjdCS85Vn+QAlcpl0+gICuEjoC0uwfRxzLhcgg0LQS5O7feNGvogiaM8XCOOagVLBh8mAvfAvaCJ2khoNVJXcELGaiOX6ZPMi4icFyABFJrAfj1cXfa/odoW9ihiu7otV4vv6fb1euFI1DLAdnZ8fnl56fQWqDSCwhJ96iFyZwO4cHt7K1vJTIxaQmiywaEuHz5ImzmRHvkWSZ/mBBXNpUilLjzLl1C4KKJuUkLlPkZxnJe11xhVbfa6z4V74Z4QukToyeUS4AeE3EibjA/QB9auW5tuy9SsViv2Lnavv/UR4DtY/0G6nfBPrL9xeXm59SdCnrEAAqB3ph3+tkAIcGxBhAinq7yBACjjVQ72yRMrlIjRWcetIASeCwHyxvNB5QOinOck997IDMimHdoqYbrLeBVIYCtzqwHgfq5LN2eFU9TythoAyXA+SC4YI1aVzHdqBedXKjtffMq6TgBEA8vceyYDLOuR3wHJBCMH+VoigtECnv9RFfVtQWsF4xe6jtEq8ImLuvCN47wAhAc/SrePDj+4cJ+agDrusOAl914bCe5dmr2pXPxF9Y8FacMp/DYCWBIUc5AufrT5dE0moI55ZRJKdJAGPirBt6b4u54Y8liFDyVPoB/LSlad5nf6HBnzXmmCbyVtrBKrSjZzGuo1oasJ4IAJpKvqgcU0xMFHNdJvbG6/L/YhQB3nteuorDEUw1uVqUUq117DYYz5D52qxm7jHHDdAAAAAElFTkSuQmCC"""
+        image = PILImage.open(BytesIO(base64.b64decode(icon_data)))
+        icon = ImageTk.PhotoImage(image)
+
+        if OS in ['Windows', 'Linux']:
+            # Reduce the icon size for Windows and Linux
+            self._root.iconphoto(True, ImageTk.PhotoImage(image.resize((32, 32))))
+        else:
+            self._root.iconphoto(True, icon)
 
     def set_icon(self, image_file):
         """Sets the icon for all windows in the application
