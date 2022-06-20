@@ -3,6 +3,7 @@ from tkinter import ttk
 from tkinter import scrolledtext
 from tkinter import font
 from functools import partial
+from PIL import Image as PILImage, ImageTk
 import platform
 
 if platform.system() == 'Windows':
@@ -13,13 +14,6 @@ elif platform.system() == 'Linux':
     OS = 'Linux'
 else:
     OS = 'Other'
-
-try:
-    from PIL import Image as PILImage, ImageTk
-    PILLOW = True
-except ImportError:
-    PILImage = ImageTk = None
-    PILLOW = False
 
 
 class GooeyPieError(Exception):
@@ -1348,17 +1342,8 @@ class Image(Label):
 
     @image.setter
     def image(self, image_path):
-        image_extension = image_path[-3:]
-        if not PILLOW and image_extension != 'gif':
-            raise ValueError('Only gif images can be used at this time.')
-
         self._image = image_path
-
-        if not PILLOW:
-            self._tk_image = tk.PhotoImage(file=image_path)
-        else:
-            self._tk_image = ImageTk.PhotoImage(PILImage.open(image_path))
-
+        self._tk_image = ImageTk.PhotoImage(PILImage.open(image_path))
         self.configure(image=self._tk_image)
 
 
@@ -2003,19 +1988,11 @@ class ImageButton(Button):
             text (str): Optional text that appears on the button
         """
         super().__init__(container, text, event_function, 0)
-        image_extension = image[-3:]
-        if not PILLOW and image_extension != 'gif':
-            raise ValueError('Only gif images can be used at this time.')
 
         self._image = image
         self._padding = [4, 4]  # default spacing between the image and button border
 
-        if not PILLOW:
-            self._tk_image = tk.PhotoImage(file=image)
-        else:
-            self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
-
-        # self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
+        self._tk_image = ImageTk.PhotoImage(PILImage.open(image))
         self.configure(image=self._tk_image, compound='left' if text else 'image')
 
     def __str__(self):
