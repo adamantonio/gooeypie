@@ -1450,7 +1450,7 @@ class Secret(Input):
 
 
 class SimpleListbox(tk.Listbox, GooeyPieWidget):
-    """Base class for the Listbox widget. Inherited by Listbox, which includes a vertical scrollbar"""
+    """Base class for the Listbox widget. Used by Listbox, which includes a vertical scrollbar"""
     def __init__(self, container, items=()):
         """Creates a new SimpleListbox"""
         GooeyPieWidget.__init__(self, container)
@@ -1472,7 +1472,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
         self._events['select'] = None
 
     def __str__(self):
-        return f'<Listbox {tuple(self.items)}>'
+        return f'<SimpleListbox {tuple(self.items)}>'
 
     def __repr__(self):
         return self.__str__()
@@ -1690,6 +1690,12 @@ class Listbox(Container, GooeyPieWidget):
         GooeyPieWidget.__init__(self, container)
         self._events['select'] = None
 
+    def __str__(self):
+        return f'<Listbox {tuple(self._listbox.items)}>'
+
+    def __repr__(self):
+        return self.__str__()
+
     def _visible_lines(self):
         """Returns the number of lines that the listbox can currently display by dividing the height of the listbox
         by the height of the font (in pixels). This may be different to the height property set on the listbox if
@@ -1762,7 +1768,7 @@ class Listbox(Container, GooeyPieWidget):
 
     @property
     def items(self):
-        """Gets or sets the contents of the Listbox as a list os strings"""
+        """Gets or sets the contents of the Listbox as a list of strings"""
         return self._listbox.items
 
     @items.setter
