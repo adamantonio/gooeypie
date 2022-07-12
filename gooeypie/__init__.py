@@ -1059,4 +1059,5 @@ class GooeyPieApp(WindowBase):
         self._init_window()
         if not self._icon:
             self._set_default_icon()
+        self.focus()
         self.mainloop()
