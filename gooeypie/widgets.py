@@ -1649,6 +1649,9 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
                 self.selected_index = index  # Keep the existing selection
                 return removed_item
 
+    def clear(self):
+        """Removes all items in the Listbox"""
+        self.items = []
 
 class Listbox(Container, GooeyPieWidget):
     """Listbox that includes a vertical scrollbar as needed."""
@@ -1855,6 +1858,10 @@ class Listbox(Container, GooeyPieWidget):
         removed = self._listbox.remove_selected()
         self._update_scrollbar()
         return removed
+
+    def clear(self):
+        """Removes all items in the Listbox"""
+        self._listbox.clear()
 
 
 class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):

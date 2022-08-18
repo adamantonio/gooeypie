@@ -92,6 +92,9 @@ def enable_disable_listboxes(event):
     state = 'Disabling' if listbox.disabled else 'Enabling'
     output.prepend(f'{state} listboxes\n')
 
+def clear(event):
+    listbox.clear()
+    scroll_listbox.clear()
 
 # Listbox Container
 listbox_container = gp.LabelContainer(app, 'Simple Listbox')
@@ -135,8 +138,9 @@ select_all = gp.Button(test_container, 'Select all', select)
 select_none = gp.Button(test_container, 'Select none', select)
 remove_selection = gp.Button(test_container, 'Remove selected', remove_selected)
 disable = gp.Button(test_container, 'Enable/disable listboxes', enable_disable_listboxes)
+clear = gp.Button(test_container, 'Clear all', clear)
 
-test_container.set_grid(8, 2)
+test_container.set_grid(9, 2)
 test_container.set_column_weights(1, 1)
 test_container.add(setter_button, 1, 1, fill=True)
 test_container.add(items_button, 1, 2, fill=True)
@@ -154,6 +158,7 @@ test_container.add(select_all, 7, 1, fill=True)
 test_container.add(select_none, 7, 2, fill=True)
 test_container.add(remove_selection, 8, 1, fill=True)
 test_container.add(disable, 8, 2, fill=True)
+test_container.add(clear, 9, 1, fill=True)
 
 # Output container
 output_container = gp.LabelContainer(app, 'Output')
