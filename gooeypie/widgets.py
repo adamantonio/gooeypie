@@ -613,11 +613,8 @@ class GooeyPieWidget:
 
         # Events in self._tk_event_mappings are associated with the bind() method
         if event_name in self._tk_event_mappings:
-            if isinstance(self, Listbox):
-                # Bind the event to the listbox part of the Listbox widget
-                self._listbox.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
-            elif isinstance(self, (Table, NewListbox)):
-                # Bind the event to the treeview part of the Table widget
+            if isinstance(self, (Table, Listbox)):
+                # Bind the event to the treeview part of the Table & Listbox widgets
                 self._treeview.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
             else:
                 self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
@@ -659,15 +656,10 @@ class GooeyPieWidget:
 
         if event_name == 'select':
             # Select event associated with Listboxes, Dropdowns and Tables
-            if isinstance(self, SimpleListbox):
-                self.bind('<<ListboxSelect>>', partial(self._event, event_name))
-            elif isinstance(self, Listbox):
-                self._listbox.bind('<<ListboxSelect>>', partial(self._event, event_name))
-            elif isinstance(self, Dropdown):
+            if isinstance(self, Dropdown):
                 self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
-            elif isinstance(self, (Table, NewListbox)):
+            elif isinstance(self, (Table, Listbox)):
                 self._treeview.bind('<<TreeviewSelect>>', partial(self._event, event_name))
-
 
     def remove_event_listener(self, event_name):
         """Removes an event listener from a widget. Has no effect if the event is not currently set.
@@ -683,11 +675,8 @@ class GooeyPieWidget:
 
         if event_name in self._tk_event_mappings:
             # Unbind standard events like mouse_down, right_click etc
-            if isinstance(self, Listbox):
-                # Unbind the event to the listbox part of the widget
-                self._listbox.unbind(self._tk_event_mappings[event_name])
-            elif isinstance(self, (Table, NewListbox)):
-                # Unbind the event to the treeview part of the Table widget
+            if isinstance(self, (Table, Listbox)):
+                # Unbind the event to the treeview part of the Table & Listbox widgets
                 self._treeview.unbind(self._tk_event_mappings[event_name])
             elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
                 # Default unbind for all widgets unless it will break the hyperlink functionality
@@ -720,14 +709,10 @@ class GooeyPieWidget:
             self.configure(command='')
 
         if event_name == 'select':
-            # Select event associated at the moment with listboxes and dropdowns
-            if isinstance(self, SimpleListbox):
-                self.unbind('<<ListboxSelect>>')
-            elif isinstance(self, Listbox):
-                self._listbox.unbind('<<ListboxSelect>>')
-            elif isinstance(self, Dropdown):
+            # Select event associated at the moment with Listboxes, Tables and Dropdowns
+            if isinstance(self, Dropdown):
                 self.unbind('<<ComboboxSelected>>')
-            elif isinstance(self, (Table, NewListbox)):
+            elif isinstance(self, (Table, Listbox)):
                 self._treeview.unbind('<<TreeviewSelect>>')
 
     # All widgets can be enabled and disabled
@@ -741,18 +726,13 @@ class GooeyPieWidget:
         self._disabled = bool(value)
 
         # Different widgets are disabled in different ways
-        if isinstance(self, (SimpleListbox, Textbox)):
+        if isinstance(self, Textbox):
             # tk widgets disabled with config
             state = 'disabled' if self._disabled else 'normal'
             self.config(state=state)
 
-        elif isinstance(self, Listbox):
-            # The listbox is a member of the ScrolledListbox object
-            state = 'disabled' if self._disabled else 'normal'
-            self._listbox.config(state=state)
-
-        elif isinstance(self, (Table, NewListbox)):
-            # The treeview is a member of the Table object
+        elif isinstance(self, (Table, Listbox)):
+            # The treeview is a member of the Table and Listbox widgets
             # Note: events still fire when the table is disabled
             state = ['disabled'] if self._disabled else ['!disabled']
             self._treeview.state(state)
@@ -1452,7 +1432,7 @@ class Secret(Input):
             self.mask()
 
 
-class NewListbox(Container, GooeyPieWidget):
+class Listbox(Container, GooeyPieWidget):
     """Listbox widget"""
     def __init__(self, container, items=()):
         """Creates a new Listbox
@@ -1733,422 +1713,6 @@ class NewListbox(Container, GooeyPieWidget):
         for row_id in self._treeview.get_children():
             self._treeview.delete(row_id)
         self._update_scrollbar()
-
-
-class SimpleListbox(tk.Listbox, GooeyPieWidget):
-    """Base class for the Listbox widget. Used by Listbox, which includes a vertical scrollbar"""
-    def __init__(self, container, items=()):
-        """Creates a new SimpleListbox"""
-        GooeyPieWidget.__init__(self, container)
-        tk.Listbox.__init__(self, container)
-
-        # Configuration options to make the listbox look more like a ttk widget
-        self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'), activestyle='none',
-                       highlightthickness=1, exportselection=False)
-
-        # Different border colour names for Windows and Mac https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
-        if OS == 'Windows':
-            self.configure(highlightbackground='systemGrayText')
-            self.configure(highlightcolor='systemHighlight')
-        if OS == "Mac":
-            self.configure(highlightbackground='systemBlackText')
-            self.configure(highlightcolor='systemHighlight')
-
-        self.insert('end', *items)
-        self._events['select'] = None
-
-    def __str__(self):
-        return f'<SimpleListbox {tuple(self.items)}>'
-
-    def __repr__(self):
-        return self.__str__()
-
-    @property
-    def height(self):
-        """Gets or sets the number of lines in the listbox"""
-        return self.cget('height')
-
-    @height.setter
-    def height(self, lines):
-        self.configure(height=lines)
-
-    @property
-    def width(self):
-        """Gets or sets the width of the listbox in characters. Default is 20."""
-        return self.cget('width')
-
-    @width.setter
-    def width(self, chars):
-        self.configure(width=chars)
-
-    @property
-    def items(self):
-        """Gets or sets the contents of the Listbox as a list os strings"""
-        return list(self.get(0, 'end'))
-
-    @items.setter
-    def items(self, items_):
-        self.delete(0, 'end')
-        self.insert(0, *items_)
-
-    @property
-    def multiple_selection(self):
-        """Gets or sets whether the listbox allows multiple items to be selected or not"""
-        return self.cget('selectmode') == 'extended'
-
-    @multiple_selection.setter
-    def multiple_selection(self, multiple):
-        self.select_none()
-        mode = 'extended' if multiple else 'browse'
-        self.configure(selectmode=mode)
-
-    @property
-    def selected_index(self):
-        """Gets or sets the index(es), starting from 0, of the selected line. Returns None if nothing
-        is selected. Returns a list of indexes if multiple selections are enabled.
-        """
-        select = self.curselection()
-        if len(select) == 0:
-            return None
-        if self.multiple_selection:
-            return list(select)
-        else:
-            return select[0]
-
-    @selected_index.setter
-    def selected_index(self, index):
-        """Adds to the current selection if multiple selection is set"""
-
-        # Clear the current selection if single selection only
-        if not self.multiple_selection:
-            self.select_none()
-
-        self.selection_set(index)
-        self.see(index)  # Show the selected line (in case it is not be in view)
-
-    @property
-    def selected(self):
-        """Gets or sets the item(s), starting from 0, of the currently selected line. Returns None
-        if nothing is selected. Returns a list of items if multiple selections are enabled.
-        """
-        select = self.curselection()
-        if len(select) == 0:
-            return None
-        if self.multiple_selection:
-            return [self.get(0, 'end')[index] for index in select]
-        else:
-            return self.get(0, 'end')[select[0]]
-
-    @selected.setter
-    def selected(self, text):
-        """Sets the value at the current selection. Raises an error if zero or multiple items are selected"""
-        select = self.curselection()
-        if len(select) > 1:
-            raise ValueError('Cannot set value when multiple items in the listbox are selected')
-        if len(select) == 0:
-            raise ValueError('Cannot set value - no item selected in the listbox')
-
-        # if multiple selection is enabled, the selected index is in a list
-        if self.multiple_selection:
-            selected_index = self.selected_index[0]
-        else:
-            selected_index = self.selected_index
-
-        # change the selected item
-        updated_items = self.items
-        updated_items[selected_index] = text
-        self.items = updated_items
-
-    def select_none(self):
-        """Deselects any items that may be selected in the listbox"""
-        self.selection_clear(0, 'end')
-
-    def select_all(self):
-        """Selects (highlights) all items in the listbox. Multiple selection must be enabled"""
-        if self.multiple_selection:
-            self.selection_set(0, 'end')
-
-    def add_item(self, item):
-        """Adds an item to the end of the listbox
-
-        Args:
-            item (str): The item to add to the Listbox
-        """
-        self.insert('end', item)
-
-    def add_item_to_start(self, item):
-        """Adds an item to the top of the listbox
-
-        Args:
-            item (str): The item to add to the Listbox
-        """
-        self.insert(0, item)
-
-    def remove_item(self, index):
-        """Removes and returns the item at the given index
-
-        Args:
-            index (int): The index of the item to remove from the Listbox
-
-        Returns:
-            str: The item in the Listbox at index
-
-        Raises:
-            TypeError: Index is not an integer
-            ValueError: Index is negative
-            ValueError: Index is larger than the number of items in the listbox
-        """
-        if type(index) != int:
-            raise TypeError('Cannot remove item from listbox - the index must be an integer')
-        if index < 0:
-            raise ValueError('Cannot remove item from listbox - the index cannot be negative')
-        if index >= len(self.items):
-            raise ValueError('Cannot remove item from listbox - index too large')
-
-        # Get item, remove and return
-        item = self.items[index]
-        self.delete(index)
-        return item
-
-    def remove_selected(self):
-        """Removes and returns all items from the selected index(es)
-
-        Returns:
-            A string or list of strings, depending on whether multiple items is enabled. None if nothing is selected
-        """
-        if self.selected_index is not None:
-            if self.multiple_selection:
-                # Return a list of items if multiple selection enabled
-                removed_items = []
-                # traverse the selected indexes in reverse order to avoid
-                # index repetition issues
-                for index in reversed(self.selected_index):
-                    # self.remove_item returns each removed item, append it to a list
-                    removed_items.append(self.remove_item(index))
-                # items were added to removed_items in reversed order, so return the reverse
-                # to get the correct order back
-                return list(reversed(removed_items))
-            else:
-                # Return single value
-                index = self.selected_index
-                removed_item = self.remove_item(index)
-                self.selected_index = index  # Keep the existing selection
-                return removed_item
-
-    def clear(self):
-        """Removes all items in the Listbox"""
-        self.items = []
-
-
-class Listbox(Container, GooeyPieWidget):
-    """Listbox that includes a vertical scrollbar as needed."""
-    def __init__(self, container, items=()):
-        """Creates a new Listbox
-
-        Args:
-            container: The window or container to which the widget will be added
-            items (list): Optional, a list of the items in the Listbox.
-        """
-        Container.__init__(self, container)
-
-        # Set container to fill cell
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        # Create listbox and scrollbar
-        self._listbox = SimpleListbox(self, items)
-        self._scrollbar = tk.Scrollbar(self, orient='vertical')
-
-        # Configure behaviour of scrollbar
-        self._scrollbar.config(command=self._listbox.yview)
-        self._listbox.config(yscrollcommand=self._scrollbar.set)
-
-        # Add to parent Container
-        self._listbox.grid(row=0, column=0, sticky='nsew')
-        self._scrollbar.grid(row=0, column=1, sticky='nsew')
-
-        # Default scrollbar settings
-        self._scrollbar_visible = 'auto'
-        self.bind('<Configure>', self._update_scrollbar)  # Update scrollbar visibility when listbox changes size
-
-        # Alias Listbox methods for this class that don't affect its contents
-        # (methods that affect the contents need to take the additional step of checking
-        # for the scrollbar visibility if scrollbar visibility is set to 'auto')
-        self.select_all = self._listbox.select_all
-        self.select_none = self._listbox.select_none
-
-        GooeyPieWidget.__init__(self, container)
-        self._events['select'] = None
-
-    def __str__(self):
-        return f'<Listbox {tuple(self._listbox.items)}>'
-
-    def __repr__(self):
-        return self.__str__()
-
-    def _visible_lines(self):
-        """Returns the number of lines that the listbox can currently display by dividing the height of the listbox
-        by the height of the font (in pixels). This may be different to the height property set on the listbox if
-        it has been stretched to fill in the vertical direction.
-        Used to determine whether or not to show the scrollbar when set it is set to 'auto'
-        """
-        self._listbox.update()
-        font_height = font.Font(font='TkDefaultFont').metrics('linespace')
-        font_height *= 1.05  # fudge to account for line spacing, presumably
-        listbox_height = self._listbox.winfo_height()
-        return int(listbox_height / font_height)
-
-    def _update_scrollbar(self, _event=None):
-        """Updates the visibility of the scrollbar in response to resize events, changes to the contents
-        of the listbox and changes to the scrollbar setting using the scrollbar property.
-        The _event parameter is needed so it can be used as the 'Configure' callback, which is triggered when the
-        listbox changes size in response to a window resize event.
-        """
-        if self._scrollbar_visible == 'visible':
-            self._show_scrollbar()
-        elif self._scrollbar_visible == 'hidden':
-            self._hide_scrollbar()
-        else:
-            if len(self._listbox.items) > self._visible_lines():
-                self._show_scrollbar()
-            else:
-                self._hide_scrollbar()
-
-    def _hide_scrollbar(self):
-        """Hides the scrollbar from the listbox"""
-        self._listbox.grid_remove()
-        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=2)
-        self._scrollbar.grid_remove()
-
-    def _show_scrollbar(self):
-        """Shows the scrollbar on the side of the listbox"""
-        self._listbox.grid_remove()
-        self._listbox.grid(row=0, column=0, sticky='nsew', columnspan=1)
-        self._scrollbar.grid()
-
-    @property
-    def height(self):
-        """Gets or set the number of lines of the Listbox"""
-        return self._listbox.cget('height')
-
-    @height.setter
-    def height(self, lines):
-        self._listbox.configure(height=lines)
-
-    @property
-    def width(self):
-        """Gets or sets the width of the listbox in characters. Default is 20."""
-        return self._listbox.width
-
-    @width.setter
-    def width(self, chars):
-        self._listbox.width = chars
-
-    @property
-    def scrollbar(self):
-        """Gets or sets the scrollbar setting. Must be one of either 'auto', 'hidden' or 'visible'"""
-        return self._scrollbar_visible
-
-    @scrollbar.setter
-    def scrollbar(self, setting):
-        if setting not in ('auto', 'visible', 'hidden'):
-            raise ValueError("Invalid scrollbar option - must be set to 'auto', 'hidden' or 'visible'")
-        self._scrollbar_visible = setting
-        self._update_scrollbar()
-
-    @property
-    def items(self):
-        """Gets or sets the contents of the Listbox as a list of strings"""
-        return self._listbox.items
-
-    @items.setter
-    def items(self, items_):
-        self._listbox.items = items_
-        self._update_scrollbar()
-
-    @property
-    def multiple_selection(self):
-        """Gets or sets whether the listbox allows multiple items to be selected or not"""
-        return self._listbox.multiple_selection
-
-    @multiple_selection.setter
-    def multiple_selection(self, multiple):
-        self._listbox.multiple_selection = multiple
-
-    @property
-    def selected(self):
-        """Gets or sets the item(s), starting from 0, of the currently selected line. Returns None
-        if nothing is selected. Returns a list of items if multiple selections are enabled.
-        """
-        return self._listbox.selected
-
-    @selected.setter
-    def selected(self, text):
-        """Sets the value at the current selection. Raises an error if zero or multiple items are selected"""
-        self._listbox.selected = text
-
-    @property
-    def selected_index(self):
-        """Gets or sets the index(es), starting from 0, of the selected line. Returns None if nothing
-        is selected. Returns a list of indexes if multiple selections are enabled.
-        """
-        return self._listbox.selected_index
-
-    @selected_index.setter
-    def selected_index(self, index):
-        """Adds to the current selection if multiple selection is set"""
-
-        self._listbox.selected_index = index
-
-    def add_item(self, item):
-        """Adds an item to the end of the listbox
-
-        Args:
-            item (str): The item to add to the Listbox
-        """
-        self._listbox.add_item(item)
-        self._update_scrollbar()
-
-    def add_item_to_start(self, item):
-        """Adds an item to the top of the listbox
-
-        Args:
-            item (str): The item to add to the Listbox
-        """
-        self._listbox.add_item_to_start(item)
-        self._update_scrollbar()
-
-    def remove_item(self, index):
-        """Removes and returns the item at the given index
-
-        Args:
-            index (int): The index of the item to remove from the Listbox
-
-        Returns:
-            str: The item in the Listbox at index
-
-        Raises:
-            TypeError: Index is not an integer
-            ValueError: Index is negative
-            ValueError: Index is larger than the number of items in the listbox
-        """
-        removed = self._listbox.remove_item(index)
-        self._update_scrollbar()
-        return removed
-
-    def remove_selected(self):
-        """Removes and returns all items from the selected index(es)
-
-        Returns:
-            A string or list of strings, depending on whether multiple items is enabled. None if nothing is selected
-        """
-        removed = self._listbox.remove_selected()
-        self._update_scrollbar()
-        return removed
-
-    def clear(self):
-        """Removes all items in the Listbox"""
-        self._listbox.clear()
 
 
 class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
