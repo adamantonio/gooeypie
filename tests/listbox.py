@@ -96,6 +96,7 @@ def clear(event):
     listbox.clear()
     scroll_listbox.clear()
 
+
 # Listbox Container
 listbox_container = gp.LabelContainer(app, 'Simple Listbox')
 listbox = gp.SimpleListbox(listbox_container)

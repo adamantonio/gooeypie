@@ -134,6 +134,10 @@ def disable(event):
     log.prepend_line(f'Table is {"disabled" if table.disabled else "enabled"}')
 
 
+def sortable(event):
+    table.sortable = sortable_chk.checked
+
+
 app = gp.GooeyPieApp('Table testing')
 
 widget_cont = gp.LabelContainer(app, 'Table widget')
@@ -155,6 +159,9 @@ multiple_selection = gp.Checkbox(widget_cont, 'Multiple selection')
 multiple_selection.add_event_listener('change', toggle_multiple)
 disable_chk = gp.Checkbox(widget_cont, 'Disable table')
 disable_chk.add_event_listener('change', disable)
+sortable_chk = gp.Checkbox(widget_cont, 'Sortable')
+sortable_chk.checked = True
+sortable_chk.add_event_listener('change', sortable)
 
 # Add operations
 set_all_btn = gp.Button(operations_add, 'Set data', set_data)
@@ -235,11 +242,12 @@ log_cont.add(clear_log_btn, 2, 1)
 
 
 # Table container
-widget_cont.set_grid(2, 2)
-widget_cont.set_column_weights(0, 1)
-widget_cont.add(table, 1, 1, fill=True, stretch=True, column_span=2)
+widget_cont.set_grid(2, 3)
+widget_cont.set_column_weights(0, 0, 1)
+widget_cont.add(table, 1, 1, fill=True, stretch=True, column_span=3)
 widget_cont.add(multiple_selection, 2, 1)
 widget_cont.add(disable_chk, 2, 2)
+widget_cont.add(sortable_chk, 2, 3)
 
 # Add all to main app
 app.set_grid(3, 1)

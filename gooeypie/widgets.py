@@ -616,7 +616,7 @@ class GooeyPieWidget:
             if isinstance(self, Listbox):
                 # Bind the event to the listbox part of the Listbox widget
                 self._listbox.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
-            elif isinstance(self, Table):
+            elif isinstance(self, (Table, NewListbox)):
                 # Bind the event to the treeview part of the Table widget
                 self._treeview.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
             else:
@@ -665,8 +665,9 @@ class GooeyPieWidget:
                 self._listbox.bind('<<ListboxSelect>>', partial(self._event, event_name))
             elif isinstance(self, Dropdown):
                 self.bind('<<ComboboxSelected>>', partial(self._event, event_name))
-            elif isinstance(self, Table):
+            elif isinstance(self, (Table, NewListbox)):
                 self._treeview.bind('<<TreeviewSelect>>', partial(self._event, event_name))
+
 
     def remove_event_listener(self, event_name):
         """Removes an event listener from a widget. Has no effect if the event is not currently set.
@@ -685,7 +686,7 @@ class GooeyPieWidget:
             if isinstance(self, Listbox):
                 # Unbind the event to the listbox part of the widget
                 self._listbox.unbind(self._tk_event_mappings[event_name])
-            elif isinstance(self, Table):
+            elif isinstance(self, (Table, NewListbox)):
                 # Unbind the event to the treeview part of the Table widget
                 self._treeview.unbind(self._tk_event_mappings[event_name])
             elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
@@ -726,7 +727,7 @@ class GooeyPieWidget:
                 self._listbox.unbind('<<ListboxSelect>>')
             elif isinstance(self, Dropdown):
                 self.unbind('<<ComboboxSelected>>')
-            elif isinstance(self, Table):
+            elif isinstance(self, (Table, NewListbox)):
                 self._treeview.unbind('<<TreeviewSelect>>')
 
     # All widgets can be enabled and disabled
@@ -750,11 +751,13 @@ class GooeyPieWidget:
             state = 'disabled' if self._disabled else 'normal'
             self._listbox.config(state=state)
 
-        elif isinstance(self, Table):
+        elif isinstance(self, (Table, NewListbox)):
             # The treeview is a member of the Table object
             # Note: events still fire when the table is disabled
             state = ['disabled'] if self._disabled else ['!disabled']
             self._treeview.state(state)
+            # When disabled, clicking on the widget still selects items, so clear any selections
+            self.select_none()
 
         elif isinstance(self, RadiogroupBase):
             # Both the container and each radiobutton are disabled
@@ -1449,6 +1452,289 @@ class Secret(Input):
             self.mask()
 
 
+class NewListbox(Container, GooeyPieWidget):
+    """Listbox widget"""
+    def __init__(self, container, items=()):
+        """Creates a new Listbox
+
+        Args:
+            container: The window or container to which the widget will be added
+            items (list): Optional, a list of the items in the Listbox.
+        """
+        Container.__init__(self, container)
+
+        # Set container to fill cell
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        # Create treeview and configure to act as listbox
+        self._treeview = ttk.Treeview(self, columns=('0',), show='tree', selectmode='browse')
+        self._treeview.column('#0', width=0, minwidth=0, stretch=False)
+
+        # Create and configure scrollbar
+        self._scrollbar = tk.Scrollbar(self, orient='vertical')
+        self._scrollbar.config(command=self._treeview.yview)
+        self._treeview.config(yscrollcommand=self._scrollbar.set)
+        self._scrollbar_visible = 'auto'
+
+        # Add to parent Container
+        self._treeview.grid(row=0, column=0, sticky='nsew')
+        self._scrollbar.grid(row=0, column=1, sticky='nsew')
+
+        GooeyPieWidget.__init__(self, container)
+        self._events['select'] = None
+
+        # Populate listbox
+        self.items = items
+        self._treeview.bind('<Configure>', self._update_scrollbar)
+
+    def __str__(self):
+        return f"<Listbox widget>"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def _update_scrollbar(self, _event=None):
+        """Updates the visibility of the scrollbar in response to resize events, changes to the contents
+        of the listbox and changes to the scrollbar setting using the scrollbar property.
+        The _event parameter is needed so it can be used as the 'Configure' callback, which is triggered when the
+        listbox changes size in response to a window resize event.
+        """
+        if self._scrollbar_visible == 'visible':
+            self._show_scrollbar()
+        elif self._scrollbar_visible == 'hidden':
+            self._hide_scrollbar()
+        else:
+            scrollbar_value = self._scrollbar.get()
+            if scrollbar_value == (0.0, 1.0) or scrollbar_value == (0.0, 0.0, 0.0, 0.0):
+                self._hide_scrollbar()
+            else:
+                self._show_scrollbar()
+
+    def _hide_scrollbar(self):
+        """Hides the scrollbar from the listbox"""
+        self._treeview.grid_remove()
+        self._treeview.grid(row=0, column=0, sticky='nsew', columnspan=2)
+        self._scrollbar.grid_remove()
+
+    def _show_scrollbar(self):
+        """Shows the scrollbar on the side of the listbox"""
+        self._treeview.grid_remove()
+        self._treeview.grid(row=0, column=0, sticky='nsew', columnspan=1)
+        self._scrollbar.grid()
+
+    @property
+    def scrollbar(self):
+        """Gets or sets the scrollbar setting. Must be one of either 'auto', 'hidden' or 'visible'"""
+        return self._scrollbar_visible
+
+    @scrollbar.setter
+    def scrollbar(self, setting):
+        if setting not in ('auto', 'visible', 'hidden'):
+            raise ValueError("Invalid scrollbar option - must be set to 'auto', 'hidden' or 'visible'")
+        self._scrollbar_visible = setting
+        self._update_scrollbar()
+
+    @property
+    def height(self):
+        """Gets or sets the minimum height of the Listbox as the number of visible lines"""
+        return self._treeview.cget('height')
+
+    @height.setter
+    def height(self, lines):
+        self._treeview.configure(height=lines)
+
+    @property
+    def width(self):
+        """Gets or sets the width of the listbox in pixels. Default is 200"""
+        return self._treeview.column(0, option='width')
+
+    @width.setter
+    def width(self, pixels):
+        self._treeview.column(0, width=pixels)
+
+    @property
+    def items(self):
+        """Gets or sets all data in the table as a list of lists"""
+        return [self._treeview.item(line)['values'][0] for line in self._treeview.get_children()]
+
+    @items.setter
+    def items(self, values):
+        self.clear()
+        for item in values:
+            self._treeview.insert('', 'end', values=(item,))
+        self._update_scrollbar()
+
+    @property
+    def multiple_selection(self):
+        """Gets or sets the ability to select multiple items in the Listbox
+
+        Allows multiple rows to be selected with shift-click or ctrl-click"""
+        return str(self._treeview.cget('selectmode')) == 'extended'
+
+    @multiple_selection.setter
+    def multiple_selection(self, multiple):
+        mode = 'extended' if multiple else 'browse'
+        self._treeview.config(selectmode=mode)
+        # Clear the selection if single selection is enabled
+        if not multiple:
+            self.select_none()
+
+    @property
+    def selected(self):
+        """Gets or sets the item(s), starting from 0, of the currently selected line. Returns None
+        if nothing is selected. Returns a list of items if multiple selections are enabled.
+        """
+        selected_ids = self._treeview.selection()
+        if not selected_ids:
+            return None
+        if self.multiple_selection:
+            return [self._treeview.item(row_id)['values'][0] for row_id in selected_ids]
+        else:
+            return self._treeview.item(selected_ids[0])['values'][0]
+
+    @selected.setter
+    def selected(self, value):
+        """Sets the value at the current selection. Raises an error if zero or multiple items are selected"""
+        selected_ids = self._treeview.selection()
+        if len(selected_ids) > 1:
+            raise ValueError('Cannot set value when multiple items in the listbox are selected')
+        if len(selected_ids) == 0:
+            raise ValueError('Cannot set value - no item selected in the listbox')
+
+        # if multiple selection is enabled, the selected index is in a list
+        if self.multiple_selection:
+            selected_index = self.selected_index[0]
+        else:
+            selected_index = self.selected_index
+
+        # change the selected item
+        updated_items = self.items
+        updated_items[selected_index] = value
+        self.items = updated_items
+        self.selected_index = selected_index
+
+    @property
+    def selected_index(self):
+        """Gets or sets the index(es), starting from 0, of the selected line. Returns None if nothing
+        is selected. Returns a list of indexes if multiple selections are enabled.
+        """
+        selected_ids = self._treeview.selection()
+        all_ids = self._treeview.get_children()
+
+        if not selected_ids:
+            return None
+        if self.multiple_selection:
+            return [all_ids.index(selected) for selected in selected_ids]
+        else:
+            return all_ids.index(selected_ids[0])
+
+    @selected_index.setter
+    def selected_index(self, index):
+        """Adds to the current selection if multiple selection is set"""
+        all_rows = self._treeview.get_children()
+        if len(self._treeview.get_children()) == 0:
+            raise ValueError(f'No items in Listbox to select')
+        if index not in range(len(all_rows)):
+            raise ValueError(f'The index must be in the range 0 to {len(all_rows) - 1}. '
+                             f'The value of the index specified was {index}.')
+
+        # Clear the current selection if single selection only
+        if not self.multiple_selection:
+            self.select_none()
+
+        # Select the item specified by the index
+        item_id = all_rows[index]
+        self._treeview.selection_add(item_id)
+        self._treeview.see(item_id)  # Show the selected row (in case it is not be in view)
+
+    def add_item(self, item):
+        """Adds an item to the end of the listbox
+
+        Args:
+            item (str): The item to add to the Listbox
+        """
+        self.add_item_at('end', item)
+
+    def add_item_to_start(self, item):
+        """Adds an item to the top of the listbox
+
+        Args:
+            item (str): The item to add to the Listbox
+        """
+        self.add_item_at(0, item)
+
+    def add_item_at(self, index, item):
+        """Adds an item to the given index
+
+        Args:
+            index (int): The index of the listbox
+            item (str): The item to add to the Listbox
+
+        Raises:
+            TypeError: index is not an integer
+            ValueError: index is out of bounds
+        """
+        if type(index) != int and index != 'end':
+            raise TypeError(f'index must be an integer. The value provided was {index}')
+        if index != 'end' and (index < 0 or index > len(self.items)):
+            raise ValueError(f'Index out of bounds. Value must be in the range 0 to {len(self.items)}.')
+
+        self._treeview.insert('', index, values=(item,))
+        self._update_scrollbar()
+
+    def remove_item(self, index):
+        """Removes and returns the item at the given index
+
+        Args:
+            index (int): The index of the item to remove from the Listbox
+
+        Returns:
+            str: The item in the Listbox at index
+
+        Raises:
+            TypeError: Index is not an integer
+            ValueError: Index is negative
+            ValueError: Index is larger than the number of items in the listbox
+        """
+        row_ids = self._treeview.get_children()
+        if type(index) != int:
+            raise TypeError(f'index must be an integer. The value provided was {index}')
+        if index < 0 or index > len(row_ids) - 1:
+            raise ValueError(f'The index must be in the range 0 to {len(row_ids) - 1}. '
+                             f'The value of index was {index}')
+        removed = self._treeview.item(row_ids[index])['values'][0]
+        self._treeview.delete(row_ids[index])
+        self._update_scrollbar()
+        return removed
+
+    def remove_selected(self):
+        """Removes and returns all items from the selected index(es)
+
+        Returns:
+            A string or list of strings, depending on whether multiple items is enabled. None if nothing is selected
+        """
+        row_data = self.selected
+        self._treeview.delete(*self._treeview.selection())
+        self._update_scrollbar()
+        return row_data
+
+    def select_all(self):
+        """Selects (highlights) all items in the listbox. Multiple selection must be enabled"""
+        if self.multiple_selection:
+            self._treeview.selection_set(*self._treeview.get_children())
+
+    def select_none(self):
+        """Deselects any items that may be selected in the listbox"""
+        self._treeview.selection_remove(*self._treeview.selection())
+
+    def clear(self):
+        """Removes all items from the Listbox"""
+        for row_id in self._treeview.get_children():
+            self._treeview.delete(row_id)
+        self._update_scrollbar()
+
+
 class SimpleListbox(tk.Listbox, GooeyPieWidget):
     """Base class for the Listbox widget. Used by Listbox, which includes a vertical scrollbar"""
     def __init__(self, container, items=()):
@@ -1652,6 +1938,7 @@ class SimpleListbox(tk.Listbox, GooeyPieWidget):
     def clear(self):
         """Removes all items in the Listbox"""
         self.items = []
+
 
 class Listbox(Container, GooeyPieWidget):
     """Listbox that includes a vertical scrollbar as needed."""
@@ -2491,6 +2778,9 @@ class Table(Container, GooeyPieWidget):
         for col_id in column_ids:
             self._treeview.column(col_id, anchor='w')
 
+        # Table is sortable by default
+        self._sortable = True
+
         # Create vertical scrollbar configure behaviour
         self._v_scrollbar = ttk.Scrollbar(self, orient='vertical')
         self._v_scrollbar.config(command=self._treeview.yview)
@@ -2537,6 +2827,17 @@ class Table(Container, GooeyPieWidget):
     def height(self, lines):
         self._treeview.configure(height=lines)
 
+    @property
+    def sortable(self):
+        """Gets or sets whether the data can be sorted by clicking on the headings"""
+        return self._sortable
+
+    @sortable.setter
+    def sortable(self, value):
+        self._sortable = bool(value)
+        if not self._sortable:
+            self._clear_sort_icons()
+
     def _update_scrollbar(self, _event=None):
         """Adds/removes the horizontal scrollbar as needed"""
         horizontal_scrollbar_needed = self._treeview.xview() != (0.0, 1.0)
@@ -2555,7 +2856,7 @@ class Table(Container, GooeyPieWidget):
         """When the column heading is clicked on, the data are sorted according to that column"""
 
         # Do not allow sorting if the table is disabled
-        if self._disabled:
+        if self._disabled or not self._sortable:
             return
 
         # Update heading text with icon
