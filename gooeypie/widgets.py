@@ -1866,6 +1866,17 @@ class ImageButton(Button):
         return self.__str__()
 
     @property
+    def image(self):
+        """Gets of sets the image on the button"""
+        return self._image
+
+    @image.setter
+    def image(self, filename):
+        self._tk_image = ImageTk.PhotoImage(PILImage.open(filename))
+        self.configure(image=self._tk_image)
+        self._image = filename
+
+    @property
     def image_position(self):
         """Gets or sets the location of the image relative to the button text, either 'top', 'bottom', 'left'
             or 'right'.
