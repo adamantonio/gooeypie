@@ -863,6 +863,25 @@ class OpenSaveFileWindow(FileWindow):
         else:
             self._options['filetypes'].append((description, extension))
 
+    def remove_file_type(self, description, extension):
+        """Removes an existing file type from the filter list when opening or saving files
+
+        Args:
+            description (str): A description of the file type(s)
+            extension (str): The file pattern(s) to filter, multiple types should be separated with a space
+
+        Raises:
+            ValueError: if the (description, extension) has not previously been added with a call to add_file_type
+        """
+        try:
+            self._options['filetypes'].remove((description, extension))
+        except ValueError:
+            raise ValueError(f'Cannot remove file type ({description}, {extension}) as it has not been previously '
+                             f'added to the list of file types for this file window')
+
+        if not self._options['filetypes']:
+            self._options['filetypes'] = [('All files', '*.*')]
+
 
 class OpenFileWindow(OpenSaveFileWindow):
     """Open file dialog"""
