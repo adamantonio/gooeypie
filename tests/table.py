@@ -75,6 +75,10 @@ def select(event):
             log.prepend_line(f'Selected {table.selected}')
 
 
+def selected_row(event):
+    log.prepend_line(f'Selected row {table.selected_row}')
+
+
 def double_clicked(event):
     log.prepend_line(f'Double clicked {table.selected}')
 
@@ -85,7 +89,7 @@ def toggle_multiple(event):
 
 
 def select_row(event):
-    table.select_row(int(select_row_inp.text))
+    table.selected_row = int(select_row_inp.text)
 
 
 def select_none(event):
@@ -209,17 +213,19 @@ operations_select.add(select_row_inp, 1, 4, valign='middle')
 
 # Get operations
 get_selected_btn = gp.Button(operations_get, 'Get selected', select)
+get_selected_row_btn = gp.Button(operations_get, 'Get selected row', selected_row)
 get_row_btn = gp.Button(operations_get, 'Get row:', get_row)
 get_row_inp = gp.Input(operations_get)
 get_all_btn = gp.Button(operations_get, 'Print all', print_all_data)
 get_row_inp.text = 1
 get_row_inp.width = 5
 
-operations_get.set_grid(1, 4)
+operations_get.set_grid(1, 5)
 operations_get.add(get_selected_btn, 1, 1)
-operations_get.add(get_row_btn, 1, 2)
-operations_get.add(get_row_inp, 1, 3, valign='middle')
-operations_get.add(get_all_btn, 1, 4)
+operations_get.add(get_selected_row_btn, 1, 2)
+operations_get.add(get_row_btn, 1, 3)
+operations_get.add(get_row_inp, 1, 4, valign='middle')
+operations_get.add(get_all_btn, 1, 5)
 
 
 # Add all operations
@@ -259,5 +265,7 @@ app.add(log_cont, 3, 1, fill=True, stretch=True)
 
 table.add_event_listener('select', select)
 table.add_event_listener('double_click', double_clicked)
+
+
 
 app.run()

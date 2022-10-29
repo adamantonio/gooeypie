@@ -2514,6 +2514,40 @@ class Table(Container, GooeyPieWidget):
         else:
             return self._treeview.item(selected_ids)['values']
 
+    @property
+    def selected_row(self):
+        """Gets or sets the index(es), starting from 0, of the selected row. Returns None if nothing
+        is selected. Returns a list of indexes if multiple selections are enabled.
+        """
+        selected_ids = self._treeview.selection()
+        all_ids = self._treeview.get_children()
+
+        if not selected_ids:
+            return None
+        if self.multiple_selection:
+            return [all_ids.index(selected) for selected in selected_ids]
+        else:
+            return all_ids.index(selected_ids[0])
+
+    @selected_row.setter
+    def selected_row(self, index):
+        """Adds to the current selection if multiple selection is set"""
+        all_rows = self._treeview.get_children()
+        if len(self._treeview.get_children()) == 0:
+            raise ValueError(f'No items in Table to select')
+        if index not in range(len(all_rows)):
+            raise ValueError(f'The index must be in the range 0 to {len(all_rows) - 1}. '
+                             f'The value of the index specified was {index}.')
+
+        # Clear the current selection if single selection only
+        if not self.multiple_selection:
+            self.select_none()
+
+        # Select the item specified by the index
+        item_id = all_rows[index]
+        self._treeview.selection_add(item_id)
+        self._treeview.see(item_id)  # Show the selected row (in case it is not be in view)
+
     def add_row_at(self, index, data):
         """Adds a row of data to the table at a given index
 
