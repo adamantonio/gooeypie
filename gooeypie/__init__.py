@@ -152,8 +152,13 @@ class WindowBase(Container):
         self._root.resizable(self._resizable[0], bool(value))
 
     def update(self):
-        """Triggers a redraw of the window if needed, such as if an image has been changed"""
+        """Forces updates to the user interface immediately"""
         self._root.update_idletasks()
+
+    def refresh(self):
+        """Recalculates the minimum size of the window and increases its width and height if necessary"""
+        self.update()
+        self._root.minsize(self._root.winfo_reqwidth(), self._root.winfo_reqheight())
 
     def set_resizable(self, resize):
         """Determines whether the user can change the size of the window
