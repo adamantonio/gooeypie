@@ -1000,6 +1000,9 @@ class Slider(ttk.Scale, GooeyPieWidget):
 
         ttk.Scale.__init__(self, container, from_=low, to=high, orient=orientation, variable=self._value)
 
+        # Set the initial value of the slider to the low value, or it defaults to 0
+        self.set(low)
+
     def __str__(self):
         return f'<Slider from {self.cget("from")} to {self.cget("to")}>'
 
