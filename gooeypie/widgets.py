@@ -1901,15 +1901,16 @@ class ImageButton(Button):
 
 class Checkbox(ttk.Checkbutton, GooeyPieWidget):
     """A checkbox indicates a boolean state"""
-    def __init__(self, container, text):
+    def __init__(self, container, text, checked=False):
         """Creates a new checkbox
 
         Args:
             container: The window or container to which the widget will be added
             text (str): The text that appears alongside the checkbox
+            checked (bool): The initial state of the checkbox
         """
         GooeyPieWidget.__init__(self, container)
-        self._checked = tk.BooleanVar(value=False)
+        self._checked = tk.BooleanVar(value=checked)
         ttk.Checkbutton.__init__(self, container, text=text, variable=self._checked)
         self.state(['!alternate'])
         self._events['change'] = None  # Checkboxes support the 'change' event
