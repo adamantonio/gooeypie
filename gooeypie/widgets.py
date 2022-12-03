@@ -535,6 +535,9 @@ class GooeyPieWidget:
             self._events[event_name](gooeypie_event)
         except KeyError:
             raise AttributeError(f"'{event_name}' listener not associated with this widget")
+        except TypeError:
+            raise TypeError(f"The event function {self._events[event_name].__name__}() must accept a single"
+                            f" argument for the event object")
 
     def _slider_change_event(self, event_name, slider_value):
         """Event function for slider change events
@@ -597,10 +600,6 @@ class GooeyPieWidget:
         if not callable(event_function):
             raise TypeError(f"The second argument does not appear to be the name of a function. "
                             f"Remember, no brackets - you don't want to *call* the function")
-
-        # Check that the event function specified accepts a single argument
-        if event_function.__code__.co_argcount != 1:
-            raise GooeyPieError(f"The event function '{event_function.__name__}' must accept a single argument")
 
         # Hyperlinks have default events for mouse_down (activating the link)
         # and mouse_over (showing a hand icon) which cannot be overridden
