@@ -218,6 +218,14 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         if kwargs.get('stretch'):
             grid_settings['sticky'] += 'ns'
 
+        # Set the fill and stretch properties of separators automatically
+        if isinstance(widget, Separator):
+            grid_settings['sticky'] = ''
+            if widget._orientation == 'horizontal':
+                grid_settings['sticky'] += 'ew'
+            else:
+                grid_settings['sticky'] += 'ns'
+
         # Determine alignment to top/bottom and left/right if fill/stretch is not set
         if 'ew' not in grid_settings['sticky']:
             grid_settings['sticky'] += self.tk_align_mappings[kwargs.get('align', 'left')]
@@ -2727,3 +2735,31 @@ class Table(Container, GooeyPieWidget):
     def select_none(self):
         """Clears any selected rows in the table"""
         self._treeview.selection_remove(*self._treeview.selection())
+
+
+class Separator(ttk.Separator, GooeyPieWidget):
+    """A horizontal or vertical bar used to add a visual separator between elements"""
+
+    def __init__(self, container, orientation):
+        """Create a new Separator, either horizontal or vertical
+
+        Args:
+            container: The window or container to which the widget will be added
+            orientation: Either 'vertical' or 'horizontal' to specify the orientation of the separator
+        """
+
+        # Check that the orientation is a valid value
+        if orientation not in ('horizontal', 'vertical'):
+            raise ValueError(f"Separator orientation must be either 'horizontal' or 'vertical'")
+
+        GooeyPieWidget.__init__(self, container)
+        ttk.Separator.__init__(self, container, orient=orientation)
+
+        # Internal variable set here to ensure orientation is accessible by ContainerBase.add()
+        self._orientation = orientation
+
+    def __str__(self):
+        return f"<{self._orientation} Separator>"
+
+    def __repr__(self):
+        return self.__str__()
