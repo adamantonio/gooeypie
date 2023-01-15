@@ -7,7 +7,7 @@ from io import BytesIO
 
 from .widgets import *
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 
 class WindowBase(Container):
@@ -1019,6 +1019,7 @@ class GooeyPieApp(WindowBase):
 
         """
         WindowBase.__init__(self, tk.Tk(), title)
+        self._on_open_callback = None
 
     def __str__(self):
         return f"<GooeyPieApp '{self.title}'>"
@@ -1047,6 +1048,17 @@ class GooeyPieApp(WindowBase):
         """
         self._icon = image_file
         self._root.iconphoto(True, ImageTk.PhotoImage(PILImage.open(image_file)))
+
+    def on_open(self, open_function):
+        """Registers a function to be called when the application launches (after the first draw)
+
+        Args:
+            open_function (function): The function called when the application launches
+
+        """
+        if not callable(open_function):
+            raise TypeError('The argument to the on_open method must be a function')
+        self._on_open_callback = open_function
 
     def copy_to_clipboard(self, text):
         """Copies text to the OS clipboard
@@ -1088,4 +1100,6 @@ class GooeyPieApp(WindowBase):
         if not self._icon:
             self._set_default_icon()
         self.focus()
+        if self._on_open_callback:
+            self._on_open_callback()
         self.mainloop()
