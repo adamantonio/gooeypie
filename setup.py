@@ -10,7 +10,7 @@ with open(os.path.join(HERE, "README.md")) as fid:
 
 setup(
     name="gooeypie",
-    version="0.8.1",
+    version="0.9.0",
     description="Designed for beginners, GooeyPie is a simple but powerful GUI library.",
     long_description=README,
     long_description_content_type="text/markdown",
