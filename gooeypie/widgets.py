@@ -5,6 +5,9 @@ from tkinter import font
 from functools import partial
 from PIL import Image as PILImage, ImageTk
 import platform
+import datetime
+import calendar
+import re
 
 if platform.system() == 'Windows':
     OS = 'Windows'
@@ -168,6 +171,10 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         # Check that widget is a valid GooeyPieWidget or Container
         if not isinstance(widget, (GooeyPieWidget, ContainerBase, ttk.Radiobutton)):
             raise TypeError(f'Could not add {repr(widget)} as it is not a valid GooeyPie widget or Container')
+
+        # Date selectors need to be initialised
+        if isinstance(widget, Date):
+            widget._init_date_container()
 
         # Check that the grid has been defined
         if self._grid is None:
@@ -586,6 +593,20 @@ class GooeyPieWidget:
             self.text = self._sentinel.get()  # just in case
             self._event(event_name)
 
+    def _date_change_event(self, event):
+        """To implement the change event on the Date widget.
+
+        This event function is called independently of whether a 'change' event has been registered. This
+        is so that the dropdowns are updated to reflect the correct number of days in that month
+        """
+        # With every change to any selector, update the day selector
+        self._update_day_select()
+
+        # If the user has defined a 'change' event function, call the event function
+        # but only if there is an actual date
+        if self._events['change'] and self.date is not None:
+            self._event('change')
+
     def add_event_listener(self, event_name, event_function):
         """Registers an event function to respond to an event
 
@@ -710,6 +731,9 @@ class GooeyPieWidget:
 
             if isinstance(self, Textbox):
                 self.unbind('<KeyRelease>')
+
+            if isinstance(self, Date):
+                self._events['change'] = None
 
         if event_name == 'press':
             # press event on buttons
@@ -2827,3 +2851,420 @@ class Progressbar(ttk.Progressbar, GooeyPieWidget):
             raise ValueError('width must be a positive integer')
 
         self.config(length=width)
+
+
+class Date(Container, GooeyPieWidget):
+    """For selecting a date using three individual selectors"""
+
+    _month_names = list(calendar.month_name)[1:]
+    _month_names_short = [name[:3] for name in _month_names]
+    _month_numbers = [str(month_number) for month_number in range(1, 13)]
+    _days = list(range(1, 32))
+    _date_pattern = re.compile("^\d{4}-\d{1,2}-\d{1,2}$")
+
+    def __init__(self, container):
+        """Creates a new Date select widget
+
+        Args:
+            container: The window or container to which the widget will be added
+
+        """
+        GooeyPieWidget.__init__(self, container)
+        Container.__init__(self, container)
+
+        # Default year range: current year +/- 100 years
+        self._current_year = datetime.datetime.now().year
+        _years = list(range(self._current_year - 100, self._current_year + 101))
+
+        # Create widgets for year, month and day
+        self._year_select = Dropdown(self, _years)
+        self._year_select.width = 5
+        self._month_select = Dropdown(self, self._month_names)
+        self._month_select.width = 12
+        self._day_select = Dropdown(self, self._days)
+        self._day_select.width = 3
+
+        # Widgets as separators if needed
+        self._separator_1 = Label(self, '')
+        self._separator_2 = Label(self, '')
+
+        # Event listeners for each dropdown to dynamically change the contents of the day
+        self._year_select.add_event_listener('select', self._date_change_event)
+        self._month_select.add_event_listener('select', self._date_change_event)
+        self._day_select.add_event_listener('select', self._date_change_event)
+
+        # Widget order
+        self._order = [self._year_select, self._month_select, self._day_select]
+
+        # Whether the widget is rendered with separators, e.g. / or -
+        self._separator = None
+
+        # Whether months are displayed as full names, short names or numbers
+        self._month_display = 'full'
+
+        # Set to true when the widget is added to the window
+        self._added = False
+
+        self._events['change'] = None
+
+    def _init_date_container(self):
+        """Adds all widgets to the base container depending on the options set
+        Called by the parent container's .add() method
+        """
+
+        # Add the separator widgets if required
+        if self._separator:
+            self._order.insert(1, self._separator_1)
+            self._order.insert(3, self._separator_2)
+
+        # Set grid and add each widget (including separators)
+        self.set_grid(1, len(self._order))
+        for pos, widget in enumerate(self._order):
+            # Right margin is 8 unless it's the last widget in the date
+            right_margin = 8 if (pos < len(self._order) - 1) else 0
+            self.add(widget, 1, pos + 1, margins=(0, right_margin, 0, 0))
+            widget.lift()  # Sets the correct tab order
+        self._added = True
+
+    def _update_day_select(self):
+        """When the year or month changes, update the days select that it shows the correct number of days
+        for that month"""
+
+        # Save the current day selection and restore/modify it when the days list changes
+        current_day_selection = self.day
+
+        # Can only update the days if something is selected for month
+        if self.month:
+            # Get the days in the month for the selected year or 2000 (a leap year so that Feb 29 is available)
+            if self.year:
+                days_in_month = calendar.monthrange(self.year,  self.month)[1]
+            else:
+                days_in_month = calendar.monthrange(2000,  self.month)[1]
+
+            # If the current day list is no longer correct for the given month/year, change it
+            if len(self._day_select.items) != days_in_month:
+                self._day_select.items = list(range(1, days_in_month + 1))
+
+                # If the previous date selection was bigger than the new highest day, set it to the new highest
+                if current_day_selection and current_day_selection >= days_in_month:
+                    self.day = days_in_month
+                else:
+                    self.day = current_day_selection
+
+        else:
+            # Restore the day selector to its maximum
+            self._day_select.items = self._days
+            self.day = current_day_selection
+
+    def __str__(self):
+        return f"<Date widget>"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def date(self):
+        """Gets or sets the date in the date selector"""
+        try:
+            selected_date = (int(self._year_select.selected),
+                             self._month_select.selected_index + 1,
+                             self._day_select.selected_index + 1)
+            return datetime.date(*selected_date)
+        except TypeError:
+            return None
+
+    @date.setter
+    def date(self, date):
+        invalid_date_msg = f'Dates must be either datetime.date objects or strings of the form YYYY-MM-DD'
+
+        # Check format
+        if type(date) not in (datetime.date, datetime.datetime, str):
+            raise TypeError(invalid_date_msg)
+
+        if type(date) == str:
+            # Check date is of the form YYYY-MM-DD
+            if not self._date_pattern.match(date):
+                raise ValueError(invalid_date_msg)
+
+            # Get date components
+            year, month, day = [int(value) for value in date.split('-')]
+
+            # Validate date
+            try:
+                datetime.date(year, month, day)
+            except ValueError:
+                raise ValueError(f'"{date}" is not a valid date')
+
+        else:
+            year, month, day = date.year, date.month, date.day
+
+        self.year = year
+        self.month = month
+        self._update_day_select()
+        self.day = day
+
+    @property
+    def date_str(self):
+        """Get the selected date as a string"""
+        return str(self.date) if self.date else None
+
+    @property
+    def year(self):
+        """Gets or sets the selected year"""
+        if self._year_select.selected:
+            return int(self._year_select.selected)
+        else:
+            return None
+
+    @year.setter
+    def year(self, year):
+        if year is not None:
+            # Expand the year selector range if needed
+            if year < int(self._year_select.items[0]):
+                self._year_select.items = list(range(year, int(self._year_select.items[-1]) + 1))
+            if year > int(self._year_select.items[-1]):
+                self._year_select.items = list(range(int(self._year_select.items[0]), year + 1))
+
+            self._year_select.selected = str(year)
+        else:
+            self._year_select.selected = None
+
+        self._update_day_select()
+
+    @property
+    def month(self):
+        """Gets or sets the selected month as an integer from 1 to 12"""
+        if self._month_select.selected:
+            return self._month_select.selected_index + 1
+        else:
+            return None
+
+    @month.setter
+    def month(self, month):
+        if month is not None:
+            if type(month) != int:
+                raise TypeError('Month must be an integer from 1 to 12.')
+            if not 1 <= month <= 12:
+                raise ValueError('Month must be an integer from 1 to 12.')
+
+            self._month_select.selected_index = month - 1
+        else:
+            self._month_select.selected = None
+
+        self._update_day_select()
+
+    @property
+    def month_name(self):
+        """Gets or sets the full name of the currently selected month"""
+        if self._month_select.selected:
+            # Month select could be month numbers or month names
+            return self._month_names[self._month_select.selected_index]
+        else:
+            return None
+
+    @month_name.setter
+    def month_name(self, month_name):
+        if month_name in self._month_names:
+            # Month name could be the complete name
+            self._month_select.selected_index = self._month_names.index(month_name)
+        elif month_name in self._month_names_short:
+            # Month name could be a shortened name
+            self._month_select.selected_index = self._month_names_short.index(month_name)
+        else:
+            raise ValueError(f'"{month_name}" is not a valid month')
+
+    @property
+    def day(self):
+        """Gets or sets the selected day in the date widget"""
+        if self._day_select.selected:
+            return int(self._day_select.selected)
+        else:
+            return None
+
+    @day.setter
+    def day(self, day):
+        if day is not None:
+            # Check if the day is an integer
+            if type(day) != int or day < 1:
+                raise ValueError('Day must be a positive integer')
+            if day > 31:
+                raise ValueError(f'{day} is not a valid day')
+            if self.month and day > int(self._day_select.items[-1]):
+                raise ValueError(f'Day {day} is not valid for this month')
+
+            self._day_select.selected = str(day)
+        else:
+            self._day_select.selected = None
+
+    def set_selector_order(self, selector_order):
+        """Specifies the order of each selector in the date widget
+
+        Args:
+            selector_order (str): Must be a string of length 3 consisting of 'D', 'M', 'Y'
+
+        Raises:
+            ValeError: if the argument is not of the correct format
+            GooeyPieError: if the date widget has already been added to the window
+        """
+        if self._added:
+            raise GooeyPieError('The selector order cannot be changed after the widget has been added to the window')
+        if selector_order not in ('DMY', 'DYM', 'MDY', 'MYD', 'YDM', 'YMD'):
+            raise ValueError('The selector order must be a string consisting of a single "D", "M" and "Y", specifying'
+                             'the order of the date selectors')
+        widgets = {'Y': self._year_select, 'M': self._month_select, 'D': self._day_select}
+        self._order = [widgets[key] for key in selector_order]
+
+    @property
+    def disabled(self):
+        """Gets or set the state of the date widget"""
+        return self.year_disabled and self.month_disabled and self.day_disabled
+
+    @disabled.setter
+    def disabled(self, state):
+        self.year_disabled = self.month_disabled = self.day_disabled = bool(state)
+        self._separator_1 = self._separator_1 = bool(state)
+
+    @property
+    def year_disabled(self):
+        """Gets or sets the state of the year select of the date widget. When disabled, the year can still be changed
+        programmatically"""
+        return self._year_select.disabled
+
+    @year_disabled.setter
+    def year_disabled(self, state):
+        self._year_select.disabled = bool(state)
+
+    @property
+    def month_disabled(self):
+        """Gets or sets the state of the month select of the date widget. When disabled, the month can still be changed
+        programmatically"""
+        return self._month_select.disabled
+
+    @month_disabled.setter
+    def month_disabled(self, state):
+        self._month_select.disabled = bool(state)
+
+    @property
+    def day_disabled(self):
+        """Gets or sets the state of the day select of the date widget. When disabled, the day can still be changed
+        programmatically"""
+        return self._day_select.disabled
+
+    @day_disabled.setter
+    def day_disabled(self, state):
+        self._day_select.disabled = bool(state)
+
+    def set_separator(self, char):
+        """Sets the separator character to use between the individual date selectors. Default is None.
+
+        Args:
+            char (str): A string to use as the separator between the individual date selectors
+
+        Raises:
+            GooeyPieError: If the method is called after the widget has been added to the window
+        """
+        if self._added:
+            raise GooeyPieError('The date separator cannot be changed or set '
+                                'after the widget has been added to the window')
+        self._separator = char
+        self._separator_1.text = self._separator_2.text = char
+
+    def set_month_display(self, display_mode):
+        """Sets how the months will be displayed in the month selector
+
+        Args:
+            display_mode: either 'full' (full month names), 'short' (3 letter abbreviations) or 'numeric'
+                (integer from 1 to 12)
+
+        Raises:
+            GooeyPieError: the date format has already been added to the window
+            ValueError: the display_mode is not one of 'full', 'short' or 'numeric'
+        """
+        if self._added:
+            raise GooeyPieError('Month display mode cannot be changed after the widget has been added to the window')
+        if display_mode not in ('full', 'short', 'numeric'):
+            raise ValueError('Month display must be either "full", "short" or "numeric"')
+
+        month_display = {'full': self._month_names, 'short': self._month_names_short, 'numeric': self._month_numbers}
+        self._month_select.items = month_display[display_mode]
+        self._month_select.width = max([len(month) for month in self._month_select.items]) + 1
+
+    @property
+    def year_range(self):
+        """Gets or sets the initial bounds of the year selector
+
+        If the date is later set to a year outside of this range the selector will expand to fit.
+        """
+        return [int(self._year_select.items[0]), int(self._year_select.items[-1])]
+
+    @year_range.setter
+    def year_range(self, year_range):
+        current_selection = self.year
+
+        try:
+            start_year, end_year = year_range
+        except (TypeError, ValueError):
+            raise TypeError('year_range must be a list of length 2 (the smallest and largest years to display)')
+
+        if type(start_year) != int or type(end_year) != int:
+            raise TypeError('Year range values must be positive integers')
+        if start_year <= 0 or end_year <= 0:
+            raise ValueError('Year range values must be positive integers')
+        if start_year > end_year:
+            raise ValueError('Invalid year range - smallest year must be before largest year')
+
+        self._year_select.items = list(range(start_year, end_year + 1))
+
+        # Restore the selection or choose the closest
+        if current_selection is not None:
+            if current_selection < start_year:
+                self.year = start_year
+            elif current_selection > end_year:
+                self.year = end_year
+            else:
+                self.year = current_selection
+
+    def add_days(self, days):
+        """Adds a given number of days to the current date"""
+        if not all((self.year, self.month, self.day)):
+            raise GooeyPieError(f'Cannot add or subtract days from {self} because no date has been set')
+        self.date += datetime.timedelta(days=days)
+
+    def subtract_days(self, days):
+        """Subtracts a given number of days to the current date"""
+        self.add_days(-days)
+
+    def add_months(self, months):
+        """Adds a given number of months to the current date"""
+        if not all((self.year, self.month, self.day)):
+            raise GooeyPieError(f'Cannot add or subtract months from {self} because no date has been set')
+        years_to_add = int(months / 12)
+        months_to_add = months % 12
+        if self.month + months_to_add > 12:
+            years_to_add += 1
+            months_to_add -= 12
+
+        self.year += years_to_add
+        self.month += months_to_add
+        self._update_day_select()
+
+    def subtract_months(self, months):
+        """Subtracts a given number of months to the current date"""
+        self.add_days(-months)
+
+    def add_years(self, years):
+        """Adds a given number of years to the current date"""
+        if not all((self.year, self.month, self.day)):
+            raise GooeyPieError(f'Cannot add or subtract years from {self} because no date has been set')
+        self.year = int(self._year_select.selected) + years
+
+    def subtract_years(self, years):
+        """Subtracts a given number of years to the current date"""
+        self.add_days(-years)
+
+    def clear(self):
+        """Clears all select elements of the date widget"""
+        self.year = None
+        self.month = None
+        self.day = None
+        self._update_day_select()
