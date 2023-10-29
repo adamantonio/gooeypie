@@ -149,6 +149,14 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         for row in range(rows):
             self.rowconfigure(row, weight=1)
 
+        # Set tabs to display at their implicit size by setting the last row/column to weight of 1,
+        # since there might be additional space due to the size of other tabs.
+        if isinstance(self, Tab):
+            column_weights = (0,) * (columns - 1) + (1,)
+            row_weights = (0,) * (rows - 1) + (1,)
+            self.set_column_weights(*column_weights)
+            self.set_row_weights(*row_weights)
+
     def add(self, widget, row, column, **kwargs):
         """Add a widget to the container
 
@@ -168,8 +176,12 @@ class ContainerBase(ttk.Frame, ttk.LabelFrame):
         # Dictionary for all settings related to calling tkinter's .grid() method
         grid_settings = {'row': row - 1, 'column': column - 1}
 
+        # if isinstance(widget, TabContainer):
+        #     widget.grid(row=0, column=0, sticky='nsew')
+        #     return
+
         # Check that widget is a valid GooeyPieWidget or Container
-        if not isinstance(widget, (GooeyPieWidget, ContainerBase, ttk.Radiobutton)):
+        if not isinstance(widget, (GooeyPieWidget, ContainerBase, ttk.Radiobutton, TabContainer)):
             raise TypeError(f'Could not add {repr(widget)} as it is not a valid GooeyPie widget or Container')
 
         # Date selectors need to be initialised
@@ -399,7 +411,6 @@ class Container(ContainerBase):
             window: The window or container the label container is being added to
         """
         ContainerBase.__init__(self, window)
-        ttk.Frame.__init__(self, window)
 
     def __str__(self):
         return f"<Container widget>"
@@ -418,13 +429,228 @@ class LabelContainer(ContainerBase):
             text (str): The caption that appears on the LabelContainer
         """
         ContainerBase.__init__(self, window, text)
-        ttk.LabelFrame.__init__(self, window, text=text)
 
     def __str__(self):
         return f"<LabelContainer \'{self.cget('text')}\'>"
 
     def __repr__(self):
         return self.__str__()
+
+
+class TabContainer(ttk.Notebook):
+    """"""
+    def __init__(self, window):
+        """Create a new TabContainer
+
+        Args:
+            window: the window or container the TabContainer is being added to
+        """
+        ttk.Notebook.__init__(self, window)
+
+        # Give the tab titles a bit more breathing room
+        style = ttk.Style()
+        current_theme = style.theme_use()
+        style.theme_settings(current_theme, {"TNotebook.Tab": {"configure": {"padding": [8, 4]}}})
+
+        # Internal list of all Tab objects as a 2-tuple (window name, Tab object) added to the container
+        self._tabs = []
+
+        # Store the last selected tab so that it can be focused when the Tab Container is enabled
+        self._last_selected_tab = None
+
+        # Outer margins of the container
+        self.margins = ['auto', 'auto', 'auto', 'auto']  # top, right, bottom, left
+
+        # Keep track of the currently selected tab
+        self.bind('<<NotebookTabChanged>>', self._set_last_selected_index)
+
+    def _set_last_selected_index(self, e):
+        """Sets the index of the tab most recently selected Tab.
+        Used to restore the last selected tab when enabling all"""
+        for window_name, tab in self._tabs:
+            if window_name == super().select():
+                self._last_selected_tab = tab
+
+    def __str__(self):
+        return f"<TabContainer widget>"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def selected(self):
+        """Gets the currently selected Tab object"""
+        for window_name, tab in self._tabs:
+            if self.select() == window_name:
+                return tab
+
+    @property
+    def width(self):
+        """Gets or sets the preferred width of the TabContainer. The actual width may be larger
+        if the width of the contents exceed this value"""
+
+        # Note - this returns the set width, not necessarily the actual width
+        return self.cget('width')
+
+    @width.setter
+    def width(self, value):
+        if type(value) != int or value < 0:
+            raise ValueError(f'Width must be a positive integer')
+        self.configure(width=value)
+
+    @property
+    def height(self):
+        """Gets or sets the height of the container as an integer in pixels. The actual height may be larger
+        if the height of the contents exceed this value"""
+
+        # Note - this returns the set height, not necessarily the actual width
+        return self.cget('height')
+
+    @height.setter
+    def height(self, value):
+        if type(value) != int or value < 0:
+            raise ValueError(f'Height must be a positive integer')
+        self.configure(height=value)
+
+    @property
+    def disabled(self):
+        """Gets or sets the state of the widget
+
+        Disabled TabContainers show all tabs but not their contents. When disabled is set to False, all hidden
+        tabs will be shown and the last selected tab will be selected
+        """
+        return not all([tab.disabled for tab in self.tabs])
+
+    @disabled.setter
+    def disabled(self, value):
+        for tab in self.tabs:
+            tab.disabled = bool(value)
+        if not value:
+            self._last_selected_tab.select()
+
+    @property
+    def tabs(self):
+        """Gets a list of all tab objects in the tab container"""
+        return list(tab[1] for tab in self._tabs)
+
+    def add(self, tab):
+        """Adds a new tab to the TabContainer"""
+
+        if not isinstance(tab, Tab):
+            raise ValueError(f"Only Tab objects can be added to a TabContainer. Got type '{type(tab)}'.")
+
+        # Add tab to ttk.Notebook
+        super().add(tab, text=tab._title, compound='left')
+
+        # This method is used to both initially add a tab or show it if tab if it has been hidden
+        # The presence of a tabs _id indicates whether it has already been added or not
+        if tab._id is None:
+
+            tab._id = len(self.tabs)  # Set tabId according to the order the Tab was added
+            self._tabs.append((str(tab), tab))
+
+            # Add icon if there is one
+            if tab._icon:
+                self.tab(tab._id, image=tab._icon)
+
+            # Ensure that the width of the TabContainer is large enough for the contents
+            self.update_idletasks()
+            self.width = max(self.width, tab.winfo_reqwidth())
+            self.height = max(self.height, tab.winfo_reqheight())
+
+
+class Tab(ContainerBase):
+    """Frame for adding to a TabContainer"""
+    def __init__(self, tab_container, title, icon=None):
+        """Create a new Tab with title
+
+        Args:
+            tab_container: The tab_container
+            title (str): The text on the tab
+            icon (str): The path and filename of an image to use as the tab icon
+        """
+
+        if not isinstance(tab_container, TabContainer):
+            raise TypeError(f"A tab can only be added to a TabContainer object. Got type '{type(tab_container)}'.")
+
+        self._parent = tab_container
+        self._title = title
+
+        self._icon_filename = icon
+        if icon:
+            self._icon = ImageTk.PhotoImage(PILImage.open(icon))
+        else:
+            self._icon = None
+
+        # Tab index from 0, set when the tab is added to the tab container
+        self._id = None
+
+        ContainerBase.__init__(self, tab_container)
+
+        # Alias the container methods enable_all and disable_all
+        self.disable_contents = self.disable_all
+        self.enable_contents = self.enable_all
+
+    # Note: __str__() cannot be implemented, because the default __str__ is the window path which is required by
+    # the add() method of the TabContainer class
+    # def __str__(self):
+    #     return f"<Tab '{self._title}'>"
+
+    def __repr__(self):
+        return f"<Tab '{self._title}'>"
+
+    @property
+    def icon(self):
+        """Gets or sets the icon that appears alongside the title of the tab"""
+        return self._icon_filename
+
+    @icon.setter
+    def icon(self, icon):
+        if icon:
+            self._icon = ImageTk.PhotoImage(PILImage.open(icon))
+            self._parent.tab(self._id, image=self._icon)
+            self._icon_filename = icon
+        else:
+            # Unresolved issue: removing an icon can take between 5-15 seconds to take effect
+            # Issue present on both Windows and Mac
+            self._parent.tab(self._id, image=None)
+            self._icon_filename = self._icon = None
+
+    @property
+    def disabled(self):
+        """Gets or sets the disabled state of the tab
+
+        A disabled tab cannot be selected and the contents are hidden. To allow the tab to be selected but have
+        the contents disabled, use the disable_all() method on the tab.
+
+        When a selected tab is disabled, the focus will switch to the first enabled tab.
+        """
+        return self._parent.tab(self._id, option='state') == 'disabled'
+
+    @disabled.setter
+    def disabled(self, value):
+        state = 'normal' if not value else 'disabled'
+        self._parent.tab(self._id, state=state)
+
+    def select(self):
+        """Selects (brings to the front) the tab
+
+        If the tab is disabled, enable it
+        """
+        if self.disabled:
+            self.disabled = False
+        self._parent.select(self._id)
+
+    def hide(self):
+        """Hides the tab from the TabContainer"""
+        if self._id is not None:
+            self._parent.hide(self._id)
+        else:
+            raise GooeyPieError(f'{repr(self)} cannot be hidden until it has been added to a TabContainer')
+
+    def show(self):
+        """Shows the tab from the TabContainer. Has no effect if the Tab is already visible"""
+        self._parent.add(self)
 
 
 class GooeyPieEvent:
