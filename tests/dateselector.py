@@ -40,8 +40,8 @@ def set_date_part(event):
 
 def set_date(event):
     if event.widget == set_today_btn:
-        date_dt.date = datetime.date.today()
-
+        # date_dt.date = datetime.date.today()
+        date_dt.set_today()
     elif event.widget == set_tomorrow_btn:
         date_dt.date = datetime.date.today() + datetime.timedelta(days=1)
     elif event.widget == set_next_week_btn:
@@ -123,7 +123,7 @@ date_dt = gp.Date(date_cont)
 
 # Widget customisation
 date_dt.set_selector_order('MDY')
-# date_dt.set_separator('/')
+# date_dt.set_separator('-')
 date_dt.set_month_display('full')
 date_dt.year_range = [1950, 2023]
 date_dt.disabled_year = True

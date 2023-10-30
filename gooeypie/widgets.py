@@ -3145,10 +3145,16 @@ class Date(Container, GooeyPieWidget):
 
         # Set grid and add each widget (including separators)
         self.set_grid(1, len(self._order))
+
+        # Set appropriate column weights if there are separators
+        if self._separator:
+            self.set_column_weights(1, 0, 1, 0, 1)
+
+        # Add dropdowns and possibly separators
         for pos, widget in enumerate(self._order):
             # Right margin is 8 unless it's the last widget in the date
             right_margin = 8 if (pos < len(self._order) - 1) else 0
-            self.add(widget, 1, pos + 1, margins=(0, right_margin, 0, 0))
+            self.add(widget, 1, pos + 1, margins=(0, right_margin, 0, 0), fill=True)
             widget.lift()  # Sets the correct tab order
         self._added = True
 
@@ -3449,6 +3455,10 @@ class Date(Container, GooeyPieWidget):
                 self.year = end_year
             else:
                 self.year = current_selection
+
+    def set_today(self):
+        """Sets the value of the date widget to the current day"""
+        self.date = datetime.date.today()
 
     def add_days(self, days):
         """Adds a given number of days to the current date"""
