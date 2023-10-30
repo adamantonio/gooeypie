@@ -1804,6 +1804,9 @@ class Listbox(Container, GooeyPieWidget):
 
     @items.setter
     def items(self, values):
+        if type(values) not in (list, tuple):
+            raise ValueError('Listbox items must be lists or tuples')
+
         self.clear()
         for item in values:
             self._treeview.insert('', 'end', values=(item,))
