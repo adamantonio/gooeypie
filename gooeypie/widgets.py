@@ -1066,7 +1066,7 @@ class Label(ttk.Label, GooeyPieWidget):
             text (str): The text of the label
         """
         GooeyPieWidget.__init__(self, container)
-        ttk.Label.__init__(self, container, text=text)
+        ttk.Label.__init__(self, container, text=str(text))
 
         # Mapping between GooeyPie and tkinter for alignment options
         self._tk_settings = {
@@ -1095,7 +1095,7 @@ class Label(ttk.Label, GooeyPieWidget):
 
     @text.setter
     def text(self, content):
-        self.configure(text=content)
+        self.configure(text=str(content))
 
     @property
     def align(self):
