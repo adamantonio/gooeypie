@@ -494,7 +494,7 @@ class TabContainer(ttk.Notebook):
 
     @width.setter
     def width(self, value):
-        if type(value) != int or value < 0:
+        if type(value) != int or value < 1:
             raise ValueError(f'Width must be a positive integer')
         self.configure(width=value)
 
@@ -1207,6 +1207,8 @@ class Button(ttk.Button, GooeyPieWidget):
 
     @width.setter
     def width(self, value):
+        if type(value) != int or int(value) < 1:
+            raise ValueError('Width must be a positive integer')
         self.configure(width=value)
 
     @property
@@ -1791,6 +1793,8 @@ class Listbox(Container, GooeyPieWidget):
 
     @width.setter
     def width(self, pixels):
+        if type(pixels) != int or int(pixels) < 1:
+            raise ValueError('Width must be a positive integer')
         self._treeview.column(0, width=pixels)
 
     @property
@@ -2040,6 +2044,8 @@ class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
 
     @width.setter
     def width(self, cols):
+        if type(cols) != int or int(cols) < 1:
+            raise ValueError('Width must be a positive integer')
         self.configure(width=cols)
 
     @property
@@ -2451,6 +2457,8 @@ class Dropdown(ttk.Combobox, GooeyPieWidget):
 
     @width.setter
     def width(self, value):
+        if type(value) != int or int(value) < 1:
+            raise ValueError('Width must be a positive integer')
         self.configure(width=value)
 
     def deselect(self):
@@ -2518,6 +2526,8 @@ class Number(ttk.Spinbox, GooeyPieWidget):
 
     @width.setter
     def width(self, value):
+        if type(value) != int or int(value) < 1:
+            raise ValueError('Width must be a positive integer')
         self.configure(width=value)
 
     # The underlying ttk widget (Spinbox) has 3 states: normal, disabled and readonly, so the read_only getter/setter
