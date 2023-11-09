@@ -28,6 +28,7 @@ class WindowBase(Container):
         self._preferred_size = [0, 0]  # users preferred size (actual size may be larger to fit in all widgets)
 
         self._interval_callback = None  # Dictionary for set_interval callback (callback and delay)
+        self._interval_callback_id = 0  # Unique identifier for each interval
         self._timeout = None  # Identifier used when calling set_timeout, used by clear_timeout
         self._icon = None  # Window icon
         self._resizable = [True, True]
@@ -747,13 +748,15 @@ class WindowBase(Container):
         self._check_icon(icon)
         return messagebox.askyesnocancel(title, message, parent=self._root, icon=icon)
 
-    def _trigger_interval_callback(self):
+    def _trigger_interval_callback(self, interval_id):
         """Calls the callback function associated with set_interval and sets up the next call"""
-        if self._interval_callback:
+        if self._interval_callback and interval_id == self._interval_callback_id:
             self._interval_callback['function']()
             # Race condition exists here if the interval is cleared during the callback, so another if needed!
             if self._interval_callback:
-                self._root.after(self._interval_callback['delay'], self._trigger_interval_callback)
+                self._root.after(self._interval_callback['delay'],
+                                 self._trigger_interval_callback,
+                                 self._interval_callback_id)
 
     def set_interval(self, delay, interval_function):
         """Sets a function to repeatedly execute
@@ -768,11 +771,14 @@ class WindowBase(Container):
         if not callable(interval_function):
             raise TypeError('The second argument to set_interval must be a function')
 
+        # Increment the interval id to create a unique identifier for this interval
+        self._interval_callback_id += 1
+
         self._interval_callback = {
             'delay': delay,
             'function': interval_function
         }
-        self._root.after(delay, self._trigger_interval_callback)
+        self._root.after(delay, self._trigger_interval_callback, self._interval_callback_id)
 
     def clear_interval(self):
         """Clears the set_interval function"""
