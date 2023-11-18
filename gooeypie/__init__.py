@@ -798,6 +798,7 @@ class WindowBase(Container):
         if not callable(timeout_function):
             raise TypeError('The second argument to set_timeout must be a function')
 
+        self.clear_timeout()
         self._timeout = self._root.after(delay, timeout_function)
 
     def clear_timeout(self):
