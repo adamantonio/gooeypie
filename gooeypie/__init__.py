@@ -200,20 +200,17 @@ class WindowBase(Container):
         if callback is not None:
             current = self._menu[menu_path].index('end')
 
-            try:
-                # Check that the callback accepts a single argument and
-                assert callback.__code__.co_argcount == 1
-            except AssertionError:
-                raise ValueError(f'{callback.__name__}() must accept a single argument')
-            except AttributeError:
-                raise ValueError(f'A callback function that accepts a single argument must be specified')
+            # Check that the callback is a function
+            if not callable(callback):
+                raise TypeError(f"The event_function argument does not appear to be the name of a function. "
+                                f"Remember, no brackets - you don't want to *call* the function")
 
             # Construct item path for passing to the callback eg ("File", "Open") or ("Edit", "Copy", "Formatting")
             if type(menu_path) is str:
                 item_path = (menu_path, item)
             else:
                 item_path = menu_path + (item,)
-            # self._menu[menu_path].entryconfigure(current, command=partial(callback, item_path))
+
             self._menu[menu_path].entryconfigure(current, command=partial(self._menu_select_callback,
                                                                           item_path, callback))
 
@@ -232,7 +229,12 @@ class WindowBase(Container):
         self._menu_tkcontrols[control_var_key] = tk.StringVar(value=options[0])
 
         if callback is not None:
-            assert callback.__code__.co_argcount == 1
+
+            # Check that the callback is a function
+            if not callable(callback):
+                raise TypeError(f"The event_function argument does not appear to be the name of a function. "
+                                f"Remember, no brackets - you don't want to *call* the function")
+
             for option in options:
                 self._menu[menu_path].add_radiobutton(label=option, variable=self._menu_tkcontrols[control_var_key],
                                                       command=partial(self._menu_radio_select_callback, menu_path,
@@ -243,9 +245,14 @@ class WindowBase(Container):
                 self._menu[menu_path].add_radiobutton(label=option, variable=self._menu_tkcontrols[control_var_key])
 
     def _menu_select_callback(self, menu_path, callback):
-        """Handles callbacks for regular menu items"""
+        """Handles callbacks for regular menu items and checkbox menu items"""
         event = GooeyPieEvent('menu', self, menu=menu_path)
-        callback(event)
+
+        try:
+            callback(event)
+        except TypeError:
+            raise TypeError(f"The event function {callback.__name__}() must accept a single"
+                            f" argument for the event object")
 
     def _menu_radio_select_callback(self, menu_path, control_var, callback):
         """Handles callbacks for menu radio items"""
@@ -258,7 +265,12 @@ class WindowBase(Container):
             menu_str = (menu_path[0], menu_path[1], selected_option)
 
         event = GooeyPieEvent('menu', self, menu=menu_str)
-        callback(event)
+
+        try:
+            callback(event)
+        except TypeError:
+            raise TypeError(f"The event function {callback.__name__}() must accept a single"
+                            f" argument for the event object")
 
     def _create_menu_checkbutton(self, menu_path, item, callback, state):
         """Adds a checkbutton menu item"""
@@ -273,7 +285,12 @@ class WindowBase(Container):
         self._menu[menu_path].add_checkbutton(label=item, variable=self._menu_tkcontrols[item_path])
 
         if callback is not None:
-            assert callback.__code__.co_argcount == 1
+
+            # Check that the callback is a function
+            if not callable(callback):
+                raise TypeError(f"The event_function argument does not appear to be the name of a function. "
+                                f"Remember, no brackets - you don't want to *call* the function")
+
             self._menu[menu_path].entryconfigure(self._menu[menu_path].index('end'),
                                                  command=partial(self._menu_select_callback, item_path, callback))
 
@@ -847,7 +864,7 @@ class FileWindow:
     def initial_path(self):
         """Gets or sets the full path of the location that the FileWindow will open to.
 
-        The path will vary by operating system - e.g. Windows fonts could be in 'C:\Windows\Fonts\', but the
+        The path will vary by operating system - e.g. Windows fonts could be in 'C:\\Windows\\Fonts\\', but the
         equivalent in macOS is '"'/Library/Fonts'
         """
         return self._options.get('initialdir', None)
