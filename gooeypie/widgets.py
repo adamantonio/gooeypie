@@ -3033,7 +3033,7 @@ class Progressbar(ttk.Progressbar, GooeyPieWidget):
 
      """
 
-    def __init__(self, container, mode='determinate'):
+    def __init__(self, container, mode='determinate', colour='green'):
         """Creates a new ProgressBar widget
 
         Args
@@ -3043,7 +3043,19 @@ class Progressbar(ttk.Progressbar, GooeyPieWidget):
         GooeyPieWidget.__init__(self, container)
 
         self._value = tk.IntVar()
-        ttk.Progressbar.__init__(self, container, variable=self._value)
+
+        self._colour = colour
+        
+        self.style = ttk.Style()
+        self.style.layout("ColorProgress.Horizontal.TProgressbar",
+                     [('Horizontal.Progressbar.trough',
+                      {'sticky': 'nswe',
+                       'children': [('Horizontal.Progressbar.color.pbar',
+                         {'side': 'left', 'sticky': 'ns'})]})])
+
+        self.style.configure("ColorProgress.Horizontal.TProgressbar", background=self._colour, borderwidth=0)
+
+        ttk.Progressbar.__init__(self, container, style="ColorProgress.Horizontal.TProgressbar", variable=self._value)
         self.mode = mode
 
     def __str__(self):
@@ -3065,6 +3077,18 @@ class Progressbar(ttk.Progressbar, GooeyPieWidget):
             raise ValueError('Progressbar value must be an integer between 0 and 100 (inclusive)')
 
         self._value.set(value)
+    
+
+    @property
+    def colour(self):
+        """Gets or sets the colour of the progress bar"""
+        return self._colour
+
+
+    @colour.setter
+    def colour(self, colour):
+        self.style.configure("ColourProgress.Horizontal.TProgressbar", background=colour)
+        self.colour = colour
 
     @property
     def mode(self):
