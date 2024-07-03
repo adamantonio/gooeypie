@@ -888,7 +888,7 @@ class GooeyPieWidget:
                 # Bind the event to the treeview part of the Table & Listbox widgets
                 self._treeview.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
-            elif isinstance(self, NewTextbox):
+            elif isinstance(self, Textbox):
                 # Bind the event to the textbox part of the Textbox widget (ignore scrollbar)
                 self._tk_text_widget.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
@@ -923,9 +923,6 @@ class GooeyPieWidget:
                 # Returns an internal string required to remove the listener
                 self._observer = self._value.trace('w', partial(self._text_change_event, event_name))
 
-            if isinstance(self, Textbox):
-                self.bind('<KeyRelease>', partial(self._textbox_change_event, event_name))
-
             # Note: no specific actions needed for Textbox as the change event is set when the widget is created
 
         if event_name == 'press':
@@ -956,6 +953,8 @@ class GooeyPieWidget:
             if isinstance(self, (Table, Listbox)):
                 # Unbind the event to the treeview part of the Table & Listbox widgets
                 self._treeview.unbind(self._tk_event_mappings[event_name])
+            elif isinstance(self, Textbox):
+                self._tk_text_widget.unbind(self._tk_event_mappings[event_name])
             elif not (isinstance(self, Hyperlink) and event_name in ('mouse_down', 'mouse_over')):
                 # Default unbind for all widgets unless it will break the hyperlink functionality
                 self.unbind(self._tk_event_mappings[event_name])
@@ -979,10 +978,7 @@ class GooeyPieWidget:
                     self._value.trace_vdelete('w', self._observer)
                     self._observer = None
 
-            if isinstance(self, Textbox):
-                self.unbind('<KeyRelease>')
-
-            if isinstance(self, Date):
+            if isinstance(self, (Date, Textbox)):
                 self._events['change'] = None
 
         if event_name == 'press':
@@ -1006,11 +1002,16 @@ class GooeyPieWidget:
     def disabled(self, value):
         self._disabled = bool(value)
 
-        # Different widgets are disabled in different ways
         if isinstance(self, Textbox):
             # tk widgets disabled with config
             state = 'disabled' if self._disabled else 'normal'
-            self.config(state=state)
+            self._tk_text_widget.config(state=state)
+            if OS == "Windows":
+                background = "SystemButtonFace" if state == 'disabled' else 'SystemWindow'
+                self._tk_text_widget.config(bg=background)
+            if OS == "Mac":
+                background = "SystemUtilityWindowBackgroundInactive" if state == 'disabled' else 'SystemWindowBody'
+                self._tk_text_widget.config(bg=background)
 
         elif isinstance(self, (Table, Listbox)):
             # The treeview is a member of the Table and Listbox widgets
@@ -2004,133 +2005,6 @@ class Listbox(Container, GooeyPieWidget):
         for row_id in self._treeview.get_children():
             self._treeview.delete(row_id)
         self._update_scrollbar()
-
-
-class Textbox(scrolledtext.ScrolledText, GooeyPieWidget):
-    """A Textbox is a multi-line input widget with vertical scrollbar"""
-    def __init__(self, container, width=20, height=5):
-        """Create a new Textbox widget
-
-        Args:
-            width (int): The width of the Textbox in characters
-            height (int): The height of the Textbox in lines
-        """
-        GooeyPieWidget.__init__(self, container)
-        scrolledtext.ScrolledText.__init__(self, container, width=width, height=height)
-        self._sentinel = tk.StringVar()
-
-        self.configure(borderwidth=1, relief='flat', font=font.nametofont('TkDefaultFont'),
-                       wrap='word', highlightthickness=1)
-
-        # Different border colour names for Windows and Mac
-        # https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
-        if OS == 'Windows':
-            self.configure(highlightbackground='systemGrayText')
-            self.configure(highlightcolor='systemHighlight')
-        if OS == "Mac":
-            self.configure(highlightbackground='systemBlackText')
-            self.configure(highlightcolor='systemHighlight')
-
-        self.bind('<Tab>', self.focus_next_widget)
-        self.bind('<Shift-Tab>', self.focus_previous_widget)
-        self.bind('<Control-Tab>', self.insert_tab)
-        self._events['change'] = None
-
-    def __str__(self):
-        return f"""<Textbox object>"""
-
-    def __repr__(self):
-        return self.__str__()
-
-    @staticmethod
-    def focus_next_widget(event):
-        """Overrides the default behaviour of inserting a tab character in a textbox instead of
-        changing focus to the next widget
-        """
-        event.widget.tk_focusNext().focus()
-        return 'break'
-
-    @staticmethod
-    def focus_previous_widget(event):
-        """Overrides the default behaviour of inserting a tab character in a textbox instead of
-        changing focus to the previous widget
-        """
-        event.widget.tk_focusPrev().focus()
-        return 'break'
-
-    @staticmethod
-    def insert_tab(event):
-        """Allows the user to insert a tab character into the textbox with ctrl/cmd"""
-        event.widget.insert('current', '\t')
-        return 'break'
-
-    @property
-    def width(self):
-        """Gets or sets the width of the Textbox in characters"""
-        return self.cget('width')
-
-    @width.setter
-    def width(self, cols):
-        if type(cols) != int or int(cols) < 1:
-            raise ValueError('Width must be a positive integer')
-        self.configure(width=cols)
-
-    @property
-    def height(self):
-        """Gets or sets the height of the Textbox in lines"""
-        return self.cget('width')
-
-    @height.setter
-    def height(self, rows):
-        self.configure(height=rows)
-
-    @property
-    def text(self):
-        """Gets or sets the contents of the Textbox"""
-
-        # Strip the trailing newline added by tkinter
-        return self.get('1.0', 'end')[:-1]
-
-    @text.setter
-    def text(self, text):
-        self.clear()
-        self.insert('1.0', text)
-
-    def clear(self):
-        """Clear the contents of the textbox"""
-        self.delete('1.0', 'end')
-
-    def prepend(self, text):
-        """Adds text to the beginning of the Textbox
-
-        Args:
-            text (str): The text to add to the Textbox
-        """
-        self.text = f'{text}{self.text}'
-
-    def prepend_line(self, text):
-        """Adds text plus a newline character to the beginning of the Textbox
-
-        Args:
-            text (str): The text to add to the Textbox
-        """
-        self.prepend(f'{text}\n')
-
-    def append(self, text):
-        """Adds text to the end of the Textbox
-
-        Args:
-            text (str): The text to add to the Textbox
-        """
-        self.text = f'{self.text}{text}'
-
-    def append_line(self, text):
-        """Adds text plus a newline character to the end of the Textbox
-
-        Args:
-            text (str): The text to add to the Textbox
-        """
-        self.append(f'{text}\n')
 
 
 class ImageButton(Button):
@@ -3543,7 +3417,7 @@ class Date(Container, GooeyPieWidget):
         self._update_day_select()
 
 
-class NewTextbox(Container, GooeyPieWidget):
+class Textbox(Container, GooeyPieWidget):
     """Textbox widget"""
 
     def __init__(self, container, width=20, height=5):
@@ -3554,7 +3428,6 @@ class NewTextbox(Container, GooeyPieWidget):
             height (int): The height of the Textbox in lines
         """
         Container.__init__(self, container)
-        self._container = container
 
         # Set container to fill cell
         self.columnconfigure(0, weight=1)
@@ -3603,7 +3476,7 @@ class NewTextbox(Container, GooeyPieWidget):
         # Variable used in the change event on the textbox
         self._sentinel = ''
 
-        # Set an event to always fire to update the scrollbar
+        # Set an event to always fire to update the scrollbar when new text is added
         self._tk_text_widget.bind('<KeyRelease>', self._newtextbox_change_event)
 
     def __str__(self):
@@ -3639,14 +3512,14 @@ class NewTextbox(Container, GooeyPieWidget):
                 self._show_scrollbar()
 
     def _hide_scrollbar(self):
-        """Hides the scrollbar from the listbox"""
+        """Hides the scrollbar from the Textbox"""
         self._scrollbar_vertical.grid_remove()
         self._tk_text_widget.grid_remove()
         self._tk_text_widget.grid(row=0, column=0, sticky='nsew', columnspan=2)
         self._scrollbar_is_hidden = True
 
     def _show_scrollbar(self):
-        """Shows the scrollbar on the side of the listbox"""
+        """Shows the scrollbar on the side of the Textbox"""
         self._tk_text_widget.grid_remove()
         self._tk_text_widget.grid(row=0, column=0, sticky='nsew', columnspan=1)
         self._scrollbar_vertical.grid()
@@ -3689,7 +3562,7 @@ class NewTextbox(Container, GooeyPieWidget):
 
     @staticmethod
     def insert_tab(event):
-        """Allows the user to insert a tab character into the textbox with ctrl/cmd"""
+        """Allows the user to insert a tab character into the textbox with ctrl/cmd-tab"""
         event.widget.insert('current', '\t')
         return 'break'
 
@@ -3739,7 +3612,7 @@ class NewTextbox(Container, GooeyPieWidget):
         self._newtextbox_change_event(None)
 
     def clear(self):
-        """Clear the contents of the textbox"""
+        """Clear the contents of the Textbox"""
         self._tk_text_widget.delete('1.0', 'end')
 
         # Process the change event
@@ -3752,6 +3625,7 @@ class NewTextbox(Container, GooeyPieWidget):
             text (str): The text to add to the Textbox
         """
         self.text = f'{text}{self.text}'
+        self.scroll_to_start()
 
     def prepend_line(self, text):
         """Adds text plus a newline character to the beginning of the Textbox
@@ -3760,6 +3634,7 @@ class NewTextbox(Container, GooeyPieWidget):
             text (str): The text to add to the Textbox
         """
         self.prepend(f'{text}\n')
+        self.scroll_to_start()
 
     def append(self, text):
         """Adds text to the end of the Textbox
@@ -3768,9 +3643,10 @@ class NewTextbox(Container, GooeyPieWidget):
             text (str): The text to add to the Textbox
         """
         self.text = f'{self.text}{text}'
+        self.scroll_to_end()
 
     def append_line(self, text):
-        """Adds to the textbox on a new line
+        """Adds to the Textbox on a new line
 
         Args:
             text (str): The text to add to the Textbox
@@ -3781,11 +3657,12 @@ class NewTextbox(Container, GooeyPieWidget):
             self.append('\n')
 
         self.append(text)
+        self.scroll_to_end()
 
     def scroll_to_start(self):
-        """Scrolls to the top of the textbox"""
+        """Scrolls to the top of the Textbox"""
         self._tk_text_widget.yview_moveto(0.0)
 
     def scroll_to_end(self):
-        """Scrolls to the top of the textbox"""
+        """Scrolls to the top of the Textbox"""
         self._tk_text_widget.yview_moveto(1.0)

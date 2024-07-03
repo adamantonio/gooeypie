@@ -8,30 +8,24 @@ def add_text(event):
     text = insert_text_inp.text
     cmd = event.widget.text
     if cmd == 'Append':
-        old_textbox.append(text)
-        new_textbox.append(text)
+        textbox.append(text)
     elif cmd == 'Append line':
-        old_textbox.append_line(text)
-        new_textbox.append_line(text)
+        textbox.append_line(text)
     elif cmd == 'Prepend':
-        old_textbox.prepend(text)
-        new_textbox.prepend(text)
+        textbox.prepend(text)
     elif cmd == 'Prepend line':
-        old_textbox.prepend_line(text)
-        new_textbox.prepend_line(text)
+        textbox.prepend_line(text)
     elif cmd == 'Set contents':
-        old_textbox.text = text
-        new_textbox.text = text
+        textbox.text = text
 
 
 def get_contents(event):
     # log.prepend_line(repr(old_textbox.text))
-    log.prepend_line(repr(new_textbox.text))
+    log.prepend_line(repr(textbox.text))
 
 
 def clear(event):
-    old_textbox.clear()
-    new_textbox.clear()
+    textbox.clear()
     log.prepend_line('Textbox cleared')
 
 
@@ -46,7 +40,7 @@ def clear_lorem(event):
 
 
 def set_visibility(event):
-    new_textbox.scrollbar = scrollbar_visibility_dd.selected
+    textbox.scrollbar = scrollbar_visibility_dd.selected
 
 
 def events_testing(event):
@@ -55,21 +49,29 @@ def events_testing(event):
 
 def seek(event):
     if event.widget.text == 'To start':
-        new_textbox.scroll_to_start()
+        textbox.scroll_to_start()
     else:
-        new_textbox.scroll_to_end()
+        textbox.scroll_to_end()
 
 
 def get_selected(event):
-    log.prepend_line(f'Selected text is "{new_textbox.selected}"')
+    log.prepend_line(f'Selected text is "{textbox.selected}"')
 
+
+def toggle_state(event):
+    if textbox.disabled:
+        textbox.disabled = False
+        log.prepend_line('Textbox enabled')
+    else:
+        textbox.disabled = True
+        log.prepend_line('Textbox disabled')
 
 
 app = gp.GooeyPieApp('Textbox Tests')
 
 test_cont = gp.LabelContainer(app, 'Tests')
 old_textbox_cont = gp.LabelContainer(app, 'Old Textbox')
-new_textbox_cont = gp.LabelContainer(app, 'NewTextbox')
+textbox_cont = gp.LabelContainer(app, 'NewTextbox')
 
 # Insert text
 insert_text_cont = gp.Container(test_cont)
@@ -107,7 +109,7 @@ misc_buttons_cont = gp.Container(test_cont)
 
 get_btn = gp.Button(misc_buttons_cont, 'Get contents', get_contents)
 get_selected_btn = gp.Button(misc_buttons_cont, 'Get selected', get_selected)
-# select_all_btn = gp.Button(misc_buttons_cont, 'Select all', select_all)
+state_btn = gp.Button(misc_buttons_cont, 'Enable/disable', toggle_state)
 clear_btn = gp.Button(misc_buttons_cont, 'Clear', clear)
 scroll_start_btn = gp.Button(misc_buttons_cont, 'To start', seek)
 scroll_end_btn = gp.Button(misc_buttons_cont, 'To end', seek)
@@ -115,7 +117,7 @@ scroll_end_btn = gp.Button(misc_buttons_cont, 'To end', seek)
 misc_buttons_cont.set_grid(1, 6)
 misc_buttons_cont.add(get_btn, 1, 1)
 misc_buttons_cont.add(get_selected_btn, 1, 2)
-# misc_buttons_cont.add(select_all_btn, 1, 3)
+misc_buttons_cont.add(state_btn, 1, 3)
 misc_buttons_cont.add(clear_btn, 1, 4)
 misc_buttons_cont.add(scroll_start_btn, 1, 5)
 misc_buttons_cont.add(scroll_end_btn, 1, 6)
@@ -130,37 +132,31 @@ test_cont.add(insert_buttons_cont, 2, 1, fill=True)
 test_cont.add(misc_buttons_cont, 3, 1)
 test_cont.add(log, 4, 1, fill=True)
 
-# Old textbox
-old_textbox = gp.Textbox(old_textbox_cont)
-old_textbox_cont.set_grid(1, 1)
-old_textbox_cont.add(old_textbox, 1, 1, fill=True, stretch=True)
-
 # New textbox
-new_textbox = gp.NewTextbox(new_textbox_cont)
+textbox = gp.Textbox(textbox_cont)
 
 standard_events = ['mouse_down', 'mouse_up', 'double_click', 'triple_click',
                    'middle_click', 'right_click', 'mouse_over', 'mouse_out',
                    'focus', 'blur', 'key_press']
 
 for event_name in standard_events:
-    new_textbox.add_event_listener(event_name, events_testing)
+    textbox.add_event_listener(event_name, events_testing)
 
-new_textbox.add_event_listener('change', events_testing)
+textbox.add_event_listener('change', events_testing)
 
-scrollbar_visibility_dd = gp.Dropdown(new_textbox_cont, ['auto', 'visible', 'hidden'])
+scrollbar_visibility_dd = gp.Dropdown(textbox_cont, ['auto', 'visible', 'hidden'])
 scrollbar_visibility_dd.selected_index = 0
 scrollbar_visibility_dd.add_event_listener('select', set_visibility)
 
-new_textbox_cont.set_grid(2, 1)
-new_textbox_cont.set_row_weights(1, 0)
-new_textbox_cont.add(new_textbox, 1,1, fill=True, stretch=True)
-new_textbox_cont.add(scrollbar_visibility_dd, 2, 1, fill=True)
+textbox_cont.set_grid(2, 1)
+textbox_cont.set_row_weights(1, 0)
+textbox_cont.add(textbox, 1, 1, fill=True, stretch=True)
+textbox_cont.add(scrollbar_visibility_dd, 2, 1, fill=True)
 
 # Main app
-app.set_grid(1, 3)
-app.set_column_weights(0, 1, 1)
+app.set_grid(1, 2)
+app.set_column_weights(0, 1)
 app.add(test_cont, 1, 1)
-app.add(old_textbox_cont, 1, 2, fill=True, stretch=True)
-app.add(new_textbox_cont, 1, 3, fill=True, stretch=True)
+app.add(textbox_cont, 1, 2, fill=True, stretch=True)
 
 app.run()
