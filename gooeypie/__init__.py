@@ -8,7 +8,7 @@ from io import BytesIO
 from .widgets import *
 from .timer import Timer
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 
 class WindowBase(Container):
