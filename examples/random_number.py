@@ -3,9 +3,8 @@ from random import randint
 
 label_changes = 0
 
-
 def set_random_number():
-    """Change to the label to a random number from 1 and 99"""
+    """Changes the label 25 times before settling on a number from 1 to 99"""
 
     # Increment the label_changes variable and clear the interval if 25 changes have been made
     global label_changes
