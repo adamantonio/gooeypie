@@ -819,6 +819,23 @@ class GooeyPieWidget:
             self.text = self._sentinel.get()  # just in case
             self._event(event_name)
 
+    def _newtextbox_change_event(self, key_code):
+        """This event function is always set when a textbox is created, performing two functions:
+        1. Updates the scrollbar visibility if it is set to 'auto'
+        2. Handles the 'change' event if it has been set by the user
+        """
+
+        # Update the scrollbar if required
+        if self._scrollbar_visibility == 'auto':
+            self._update_scrollbar()
+
+        # If the user has set a change event, process the event
+        if self._events['change']:
+            # But only if the text has actually changed (i.e. ignore modifier keys)
+            if self.text != self._sentinel:
+                self._sentinel = self.text
+                self._event('change')
+
     def _date_change_event(self, event):
         """To implement the change event on the Date widget.
 
@@ -870,6 +887,11 @@ class GooeyPieWidget:
             if isinstance(self, (Table, Listbox)):
                 # Bind the event to the treeview part of the Table & Listbox widgets
                 self._treeview.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+
+            elif isinstance(self, NewTextbox):
+                # Bind the event to the textbox part of the Textbox widget (ignore scrollbar)
+                self._tk_text_widget.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
+
             else:
                 self.bind(self._tk_event_mappings[event_name], partial(self._event, event_name))
 
@@ -903,6 +925,8 @@ class GooeyPieWidget:
 
             if isinstance(self, Textbox):
                 self.bind('<KeyRelease>', partial(self._textbox_change_event, event_name))
+
+            # Note: no specific actions needed for Textbox as the change event is set when the widget is created
 
         if event_name == 'press':
             # press event only on buttons
@@ -3499,7 +3523,7 @@ class Date(Container, GooeyPieWidget):
 
     def subtract_months(self, months):
         """Subtracts a given number of months to the current date"""
-        self.add_days(-months)
+        self.add_months(-months)
 
     def add_years(self, years):
         """Adds a given number of years to the current date"""
@@ -3509,7 +3533,7 @@ class Date(Container, GooeyPieWidget):
 
     def subtract_years(self, years):
         """Subtracts a given number of years to the current date"""
-        self.add_days(-years)
+        self.add_years(-years)
 
     def clear(self):
         """Clears all select elements of the date widget"""
@@ -3517,3 +3541,251 @@ class Date(Container, GooeyPieWidget):
         self.month = None
         self.day = None
         self._update_day_select()
+
+
+class NewTextbox(Container, GooeyPieWidget):
+    """Textbox widget"""
+
+    def __init__(self, container, width=20, height=5):
+        """Create a new Textbox widget
+
+        Args:
+            width (int): The width of the Textbox in characters
+            height (int): The height of the Textbox in lines
+        """
+        Container.__init__(self, container)
+        self._container = container
+
+        # Set container to fill cell
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        # Create tk Text widget
+        self._tk_text_widget = tk.Text(self, width=width, height=height)
+        self._tk_text_widget.configure(borderwidth=1,
+                                       relief='flat',
+                                       font=font.nametofont('TkDefaultFont'),
+                                       wrap='word',
+                                       highlightthickness=1,
+                                       undo=True)
+
+        # Different border colour names for Windows and Mac
+        # https://www.tcl.tk/man/tcl8.6/TkCmd/colors.htm
+        if OS == 'Windows':
+            self._tk_text_widget.configure(highlightbackground='systemGrayText')
+            self._tk_text_widget.configure(highlightcolor='systemHighlight')
+        if OS == "Mac":
+            self._tk_text_widget.configure(highlightbackground='systemBevelActiveLight')
+            self._tk_text_widget.configure(highlightcolor='systemHighlight')
+
+        self._tk_text_widget.bind('<Tab>', self.focus_next_widget)
+        self._tk_text_widget.bind('<Shift-Tab>', self.focus_previous_widget)
+        self._tk_text_widget.bind('<Control-Tab>', self.insert_tab)
+
+        # Create and configure vertical scrollbar
+        self._scrollbar_vertical = tk.Scrollbar(self, orient='vertical')
+        self._scrollbar_vertical.config(command=self._tk_text_widget.yview)
+        self._tk_text_widget.config(yscrollcommand=self._scrollbar_vertical.set)
+        self._scrollbar_visibility = 'auto'
+        self._scrollbar_is_hidden = True
+
+        # Add to parent Container
+        self._tk_text_widget.grid(row=0, column=0, sticky='nsew')
+        self._scrollbar_vertical.grid(row=0, column=1, sticky='nsew')
+
+        # If the textbox changes size, update the scrollbar
+        self._tk_text_widget.bind('<Configure>', self._configure)
+
+        # Initialise event handling
+        GooeyPieWidget.__init__(self, container)
+        self._events['change'] = None
+
+        # Variable used in the change event on the textbox
+        self._sentinel = ''
+
+        # Set an event to always fire to update the scrollbar
+        self._tk_text_widget.bind('<KeyRelease>', self._newtextbox_change_event)
+
+    def __str__(self):
+        return f"""<Textbox widget>"""
+
+    def __repr__(self):
+        return self.__str__()
+
+    def _configure(self, _event):
+        """Called when the <Configure> event fires on the textbox"""
+        if self._scrollbar_visibility == 'auto':
+            self._update_scrollbar()
+
+    def _update_scrollbar(self):
+        """Updates the visibility of the scrollbar in response to resize events, changes to the contents
+        of the textbox and changes to the scrollbar setting using the scrollbar property.
+        """
+        self._set_scrollbar()
+
+        # Additional calls are made here as the scrollbar does not reliably update immediately,
+        # meaning that it may not appear or disappear as needed when scrollbar visibility set to 'auto'
+        self.after(200, self._set_scrollbar)
+        self.after(500, self._set_scrollbar)
+
+    def _set_scrollbar(self):
+        """Sets the scrollbar visibility based on the contents of the textbox"""
+        scrollbar_value = self._scrollbar_vertical.get()
+        if scrollbar_value == (0.0, 1.0) or scrollbar_value == (0.0, 0.0, 0.0, 0.0):
+            if not self._scrollbar_is_hidden:
+                self._hide_scrollbar()
+        else:
+            if self._scrollbar_is_hidden:
+                self._show_scrollbar()
+
+    def _hide_scrollbar(self):
+        """Hides the scrollbar from the listbox"""
+        self._scrollbar_vertical.grid_remove()
+        self._tk_text_widget.grid_remove()
+        self._tk_text_widget.grid(row=0, column=0, sticky='nsew', columnspan=2)
+        self._scrollbar_is_hidden = True
+
+    def _show_scrollbar(self):
+        """Shows the scrollbar on the side of the listbox"""
+        self._tk_text_widget.grid_remove()
+        self._tk_text_widget.grid(row=0, column=0, sticky='nsew', columnspan=1)
+        self._scrollbar_vertical.grid()
+        self._scrollbar_is_hidden = False
+
+    @property
+    def scrollbar(self):
+        """Gets or sets the scrollbar setting. Must be one of either 'auto', 'hidden' or 'visible'"""
+        return self._scrollbar_visibility
+
+    @scrollbar.setter
+    def scrollbar(self, setting):
+        if setting not in ('auto', 'visible', 'hidden'):
+            raise ValueError("Invalid scrollbar option - must be set to 'auto', 'hidden' or 'visible'")
+
+        self._scrollbar_visibility = setting
+        if setting == 'visible':
+            self._show_scrollbar()
+        elif setting == 'hidden':
+            self._hide_scrollbar()
+        else:
+            # Auto scrollbar - call the update method to determine if it should be shown or hidden
+            self._update_scrollbar()
+
+    @staticmethod
+    def focus_next_widget(event):
+        """Overrides the default behaviour of inserting a tab character in a textbox instead of
+        changing focus to the next widget
+        """
+        event.widget.tk_focusNext().focus()
+        return 'break'
+
+    @staticmethod
+    def focus_previous_widget(event):
+        """Overrides the default behaviour of inserting a tab character in a textbox instead of
+        changing focus to the previous widget
+        """
+        event.widget.tk_focusPrev().focus()
+        return 'break'
+
+    @staticmethod
+    def insert_tab(event):
+        """Allows the user to insert a tab character into the textbox with ctrl/cmd"""
+        event.widget.insert('current', '\t')
+        return 'break'
+
+    @property
+    def width(self):
+        """Gets or sets the width of the Textbox in characters"""
+        return self._tk_text_widget.cget('width')
+
+    @width.setter
+    def width(self, cols):
+        if type(cols) != int or int(cols) < 1:
+            raise ValueError('Width must be a positive integer')
+        self._tk_text_widget.configure(width=cols)
+
+    @property
+    def height(self):
+        """Gets or sets the height of the Textbox in lines"""
+        return self._tk_text_widget.cget('width')
+
+    @height.setter
+    def height(self, rows):
+        if type(rows) != int or int(rows) < 1:
+            raise ValueError('Height must be a positive integer')
+        self._tk_text_widget.configure(height=rows)
+
+    @property
+    def selected(self):
+        """Gets any selected text"""
+        ranges = self._tk_text_widget.tag_ranges('sel')
+        if ranges:
+            return self._tk_text_widget.get(*ranges)
+        else:
+            return ''
+
+    @property
+    def text(self):
+        """Gets or sets the contents of the Textbox"""
+
+        # Strip the trailing newline added by tkinter
+        return self._tk_text_widget.get('1.0', 'end')[:-1]
+
+    @text.setter
+    def text(self, text):
+        self._tk_text_widget.delete('1.0', 'end')
+        self._tk_text_widget.insert('1.0', text)
+
+        self._newtextbox_change_event(None)
+
+    def clear(self):
+        """Clear the contents of the textbox"""
+        self._tk_text_widget.delete('1.0', 'end')
+
+        # Process the change event
+        self._newtextbox_change_event(None)
+
+    def prepend(self, text):
+        """Adds text to the beginning of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
+        self.text = f'{text}{self.text}'
+
+    def prepend_line(self, text):
+        """Adds text plus a newline character to the beginning of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
+        self.prepend(f'{text}\n')
+
+    def append(self, text):
+        """Adds text to the end of the Textbox
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
+        self.text = f'{self.text}{text}'
+
+    def append_line(self, text):
+        """Adds to the textbox on a new line
+
+        Args:
+            text (str): The text to add to the Textbox
+        """
+
+        # Only add a newline if there is already text there
+        if self.text:
+            self.append('\n')
+
+        self.append(text)
+
+    def scroll_to_start(self):
+        """Scrolls to the top of the textbox"""
+        self._tk_text_widget.yview_moveto(0.0)
+
+    def scroll_to_end(self):
+        """Scrolls to the top of the textbox"""
+        self._tk_text_widget.yview_moveto(1.0)
